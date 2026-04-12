@@ -389,6 +389,32 @@ async fn start_app_server(
     }
 }
 
+#[allow(clippy::too_many_arguments)]
+async fn start_tui_app_server_session(
+    target: &AppServerTarget,
+    arg0_paths: Arg0DispatchPaths,
+    config: Config,
+    cli_kv_overrides: Vec<(String, toml::Value)>,
+    loader_overrides: LoaderOverrides,
+    cloud_requirements: CloudRequirementsLoader,
+    feedback: codex_feedback::CodexFeedback,
+    remote_cwd_override: Option<PathBuf>,
+    environment_manager: Arc<EnvironmentManager>,
+) -> color_eyre::Result<AppServerSession> {
+    let app_server = start_app_server(
+        target,
+        arg0_paths,
+        config,
+        cli_kv_overrides,
+        loader_overrides,
+        cloud_requirements,
+        feedback,
+        environment_manager,
+    )
+    .await?;
+    Ok(AppServerSession::new(app_server).with_remote_cwd_override(remote_cwd_override))
+}
+
 pub(crate) async fn start_app_server_for_picker(
     config: &Config,
     target: &AppServerTarget,
@@ -1056,31 +1082,35 @@ async fn run_ratatui_app(
     // Initialize high-fidelity session event logging if enabled.
     session_log::maybe_init(&initial_config);
 
-    let mut app_server = Some(
-        match start_app_server(
-            &app_server_target,
-            arg0_paths.clone(),
-            initial_config.clone(),
-            cli_kv_overrides.clone(),
-            loader_overrides.clone(),
-            cloud_requirements.clone(),
-            feedback.clone(),
-            environment_manager.clone(),
-        )
-        .await
-        {
-            Ok(app_server) => AppServerSession::new(app_server)
-                .with_remote_cwd_override(remote_cwd_override.clone()),
-            Err(err) => {
-                terminal_restore_guard.restore_silently();
-                session_log::log_session_end();
-                return Err(err);
-            }
-        },
-    );
-
     let should_show_trust_screen_flag = !remote_mode && should_show_trust_screen(&initial_config);
     let mut trust_decision_was_made = false;
+    let mut app_server =
+        if should_show_trust_screen_flag || initial_config.model_provider.requires_openai_auth {
+            Some(
+                match start_tui_app_server_session(
+                    &app_server_target,
+                    arg0_paths.clone(),
+                    initial_config.clone(),
+                    cli_kv_overrides.clone(),
+                    loader_overrides.clone(),
+                    cloud_requirements.clone(),
+                    feedback.clone(),
+                    remote_cwd_override.clone(),
+                    environment_manager.clone(),
+                )
+                .await
+                {
+                    Ok(app_server) => app_server,
+                    Err(err) => {
+                        terminal_restore_guard.restore_silently();
+                        session_log::log_session_end();
+                        return Err(err);
+                    }
+                },
+            )
+        } else {
+            None
+        };
     let login_status = if initial_config.model_provider.requires_openai_auth {
         let Some(app_server) = app_server.as_mut() else {
             unreachable!("app server should exist when auth is required");
@@ -1171,6 +1201,37 @@ async fn run_ratatui_app(
             )),
         })
     };
+
+    let needs_app_server_session_lookup = cli.resume_last
+        || cli.fork_last
+        || cli.resume_session_id.is_some()
+        || cli.fork_session_id.is_some()
+        || cli.resume_picker
+        || cli.fork_picker;
+    if needs_app_server_session_lookup && app_server.is_none() {
+        app_server = Some(
+            match start_tui_app_server_session(
+                &app_server_target,
+                arg0_paths.clone(),
+                config.clone(),
+                cli_kv_overrides.clone(),
+                loader_overrides.clone(),
+                cloud_requirements.clone(),
+                feedback.clone(),
+                remote_cwd_override.clone(),
+                environment_manager.clone(),
+            )
+            .await
+            {
+                Ok(app_server) => app_server,
+                Err(err) => {
+                    terminal_restore_guard.restore_silently();
+                    session_log::log_session_end();
+                    return Err(err);
+                }
+            },
+        );
+    }
 
     let use_fork = cli.fork_picker || cli.fork_last || cli.fork_session_id.is_some();
     let session_selection = if use_fork {
@@ -1395,7 +1456,7 @@ async fn run_ratatui_app(
     tui.set_alt_screen_enabled(use_alt_screen);
     let app_server = match app_server {
         Some(app_server) => app_server,
-        None => match start_app_server(
+        None => match start_tui_app_server_session(
             &app_server_target,
             arg0_paths,
             config.clone(),
@@ -1403,12 +1464,12 @@ async fn run_ratatui_app(
             loader_overrides,
             cloud_requirements.clone(),
             feedback.clone(),
+            remote_cwd_override.clone(),
             environment_manager.clone(),
         )
         .await
         {
-            Ok(app_server) => AppServerSession::new(app_server)
-                .with_remote_cwd_override(remote_cwd_override.clone()),
+            Ok(app_server) => app_server,
             Err(err) => {
                 terminal_restore_guard.restore_silently();
                 session_log::log_session_end();
