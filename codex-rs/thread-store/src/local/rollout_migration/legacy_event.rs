@@ -280,7 +280,8 @@ pub(super) fn completed_item(
                 cwd: event.cwd.clone(),
                 parsed_cmd: event.parsed_cmd.clone(),
                 source: event.source,
-                interaction_input: None,
+                timeout_ms: None,
+                interaction_input: event.interaction_input.clone(),
                 status: event.status.clone().into(),
                 aggregated_output: (!event.aggregated_output.is_empty())
                     .then(|| event.aggregated_output.clone()),

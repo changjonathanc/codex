@@ -509,7 +509,7 @@ async fn exec_history_cell_shows_working_then_failed() {
     let lines = &cells[0];
     let blob = lines_to_single_string(lines);
     assert!(
-        blob.contains("• Ran false"),
+        blob.contains("• Ran (5ms) false"),
         "expected command and header text present: {blob:?}"
     );
     assert!(blob.to_lowercase().contains("bloop"), "expected error text");
@@ -541,6 +541,7 @@ async fn exec_end_without_begin_uses_event_command() {
             script_path: None,
             source: ExecCommandSource::Agent,
             status: AppServerCommandExecutionStatus::Completed,
+            timeout_ms: None,
             command_actions,
             aggregated_output: Some("done".to_string()),
             exit_code: Some(0),
@@ -552,7 +553,7 @@ async fn exec_end_without_begin_uses_event_command() {
     assert_eq!(cells.len(), 1, "expected finalized exec cell to flush");
     let blob = lines_to_single_string(&cells[0]);
     assert!(
-        blob.contains("• Ran echo orphaned"),
+        blob.contains("• Ran (5ms) echo orphaned"),
         "expected command text to come from event: {blob:?}"
     );
     assert!(
@@ -586,7 +587,7 @@ async fn exec_end_without_begin_does_not_flush_unrelated_running_exploring_cell(
     assert_eq!(cells.len(), 1, "only the orphan end should be inserted");
     let orphan_blob = lines_to_single_string(&cells[0]);
     assert!(
-        orphan_blob.contains("• Ran echo repro-marker"),
+        orphan_blob.contains("• Ran (5ms) echo repro-marker"),
         "expected orphan end to render a standalone entry: {orphan_blob:?}"
     );
     let active = active_blob(&chat);
@@ -634,7 +635,7 @@ async fn exec_end_without_begin_flushes_completed_unrelated_exploring_cell() {
         "expected flushed exploring cell: {first:?}"
     );
     assert!(
-        second.contains("• Ran echo after"),
+        second.contains("• Ran (5ms) echo after"),
         "expected orphan end entry after flush: {second:?}"
     );
     assert!(
@@ -703,7 +704,7 @@ async fn exec_history_shows_unified_exec_startup_commands() {
     assert_eq!(cells.len(), 1, "expected finalized exec cell to flush");
     let blob = lines_to_single_string(&cells[0]);
     assert!(
-        blob.contains("• Ran echo unified exec startup"),
+        blob.contains("• Ran (5ms) echo unified exec startup"),
         "expected startup command to render: {blob:?}"
     );
 }

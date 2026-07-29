@@ -3334,6 +3334,7 @@ fn core_turn_item_into_thread_item_converts_supported_variants() {
                 .to_string(),
         }],
         source: CoreExecCommandSource::Agent,
+        timeout_ms: Some(10_000),
         interaction_input: None,
         status: CoreCommandExecutionStatus::Completed,
         aggregated_output: Some("done\n".to_string()),
@@ -3355,6 +3356,7 @@ fn core_turn_item_into_thread_item_converts_supported_variants() {
             process_id: Some("pid-1".to_string()),
             source: CommandExecutionSource::Agent,
             status: CommandExecutionStatus::Completed,
+            timeout_ms: Some(10_000),
             command_actions: vec![CommandAction::Unknown {
                 command: "git -c 'http.extraHeader=Authorization: Bearer [REDACTED_SECRET]' -c http.extraHeader=X-Trace:example push"
                     .to_string(),
