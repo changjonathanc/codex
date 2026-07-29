@@ -2,8 +2,8 @@
 source: tui/src/history_cell/tests.rs
 expression: rendered
 ---
-• Ran AAAAAAAAAAAAAAAAAA
-  │ AAAAAAAAAAAAAAAAAA
-  │ AAAAAAAAAAAAAAAAAA
-  │ … +225 lines
+• Ran (1ms) AAAAAAAAAAAA
+  │ AAAAAAAAAAAA
+  │ AAAAAAAAAAAA
+  │ … +339 lines
   └ (no output)

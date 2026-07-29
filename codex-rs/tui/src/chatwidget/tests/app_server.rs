@@ -812,6 +812,7 @@ async fn live_app_server_command_execution_strips_shell_wrapper() {
                 script_path: None,
                 source: AppServerCommandExecutionSource::UserShell,
                 status: AppServerCommandExecutionStatus::InProgress,
+                timeout_ms: None,
                 command_actions: vec![AppServerCommandAction::Unknown {
                     command: script.to_string(),
                 }],
@@ -836,6 +837,7 @@ async fn live_app_server_command_execution_strips_shell_wrapper() {
                 script_path: None,
                 source: AppServerCommandExecutionSource::UserShell,
                 status: AppServerCommandExecutionStatus::Completed,
+                timeout_ms: None,
                 command_actions: vec![AppServerCommandAction::Unknown {
                     command: script.to_string(),
                 }],
@@ -857,6 +859,49 @@ async fn live_app_server_command_execution_strips_shell_wrapper() {
     assert_chatwidget_snapshot!(
         "live_app_server_command_execution_strips_shell_wrapper",
         blob
+    );
+}
+
+#[tokio::test]
+async fn live_app_server_running_command_displays_timeout() {
+    let (mut chat, mut rx, _op_rx) = make_chatwidget_manual(/*model_override*/ None).await;
+    let script = "sleep 60";
+    let command =
+        shlex::try_join(["/bin/zsh", "-lc", script]).expect("round-trippable shell wrapper");
+
+    chat.handle_server_notification(
+        ServerNotification::ItemStarted(ItemStartedNotification {
+            thread_id: "thread-1".to_string(),
+            turn_id: "turn-1".to_string(),
+            started_at_ms: 0,
+            item: AppServerThreadItem::CommandExecution {
+                id: "cmd-timeout".to_string(),
+                command,
+                cwd: test_path_buf("/tmp").abs().into(),
+                process_id: None,
+                plugin_id: None,
+                script_path: None,
+                source: AppServerCommandExecutionSource::Agent,
+                status: AppServerCommandExecutionStatus::InProgress,
+                timeout_ms: Some(90_000),
+                command_actions: vec![AppServerCommandAction::Unknown {
+                    command: script.to_string(),
+                }],
+                aggregated_output: None,
+                exit_code: None,
+                duration_ms: None,
+            },
+        }),
+        /*replay_kind*/ None,
+    );
+
+    assert!(
+        drain_insert_history(&mut rx).is_empty(),
+        "running command should remain active"
+    );
+    assert_chatwidget_snapshot!(
+        "live_app_server_running_command_displays_timeout",
+        active_blob(&chat)
     );
 }
 

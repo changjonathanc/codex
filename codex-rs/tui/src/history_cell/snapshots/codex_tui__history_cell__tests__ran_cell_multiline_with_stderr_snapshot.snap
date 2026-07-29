@@ -1,11 +1,11 @@
 ---
-source: tui/src/history_cell.rs
+source: tui/src/history_cell/tests.rs
 expression: rendered
 ---
-• Ran echo
-  │ this_is_a_very_long_si
-  │ ngle_token_that_will_w
-  │ … +2 lines
+• Ran (5ms) echo
+  │ this_is_a_very_l
+  │ ong_single_token
+  │ … +3 lines
   └ error: first line on
     stderr
     error: second line on

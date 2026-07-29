@@ -283,6 +283,10 @@ pub enum ThreadItem {
         #[serde(default)]
         source: CommandExecutionSource,
         status: CommandExecutionStatus,
+        /// The command's configured execution timeout in milliseconds, when it has a hard deadline.
+        #[serde(default)]
+        #[ts(type = "number | null")]
+        timeout_ms: Option<i64>,
         /// A best-effort parsing of the command to understand the action(s) it will perform.
         /// This returns a list of CommandAction objects because a single shell command may
         /// be composed of many commands piped together.
@@ -855,6 +859,9 @@ impl From<CoreTurnItem> for ThreadItem {
                     process_id: command.process_id,
                     source: command.source.into(),
                     status: command.status.into(),
+                    timeout_ms: command
+                        .timeout_ms
+                        .and_then(|timeout_ms| i64::try_from(timeout_ms).ok()),
                     command_actions: presentation.command_actions,
                     aggregated_output: command
                         .aggregated_output

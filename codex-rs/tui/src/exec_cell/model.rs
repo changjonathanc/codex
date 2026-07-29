@@ -68,6 +68,7 @@ pub(crate) struct ExecCall {
     pub(crate) output: Option<CommandOutput>,
     pub(crate) source: ExecCommandSource,
     pub(crate) start_time: Option<Instant>,
+    pub(crate) timeout: Option<Duration>,
     pub(crate) duration: Option<Duration>,
     pub(crate) interaction_input: Option<String>,
 }
@@ -92,6 +93,7 @@ impl ExecCell {
         command: Vec<String>,
         parsed: Vec<ParsedCommand>,
         source: ExecCommandSource,
+        timeout: Option<Duration>,
         interaction_input: Option<String>,
     ) -> bool {
         let call = ExecCall {
@@ -101,6 +103,7 @@ impl ExecCell {
             output: None,
             source,
             start_time: Some(Instant::now()),
+            timeout,
             duration: None,
             interaction_input,
         };

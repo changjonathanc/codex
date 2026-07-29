@@ -49,6 +49,10 @@ cwd: LegacyAppPathString,
  */
 processId: string | null, source: CommandExecutionSource, status: CommandExecutionStatus,
 /**
+ * The command's configured execution timeout in milliseconds, when it has a hard deadline.
+ */
+timeoutMs: number | null,
+/**
  * A best-effort parsing of the command to understand the action(s) it will perform.
  * This returns a list of CommandAction objects because a single shell command may
  * be composed of many commands piped together.

@@ -164,6 +164,8 @@ struct ExecCommandBeginTracePayload<'a> {
     parsed_cmd: &'a [codex_protocol::parse_command::ParsedCommand],
     source: ExecCommandSource,
     #[serde(skip_serializing_if = "Option::is_none")]
+    timeout_ms: Option<u64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     interaction_input: Option<&'a str>,
 }
 
@@ -180,6 +182,7 @@ impl<'a> From<&'a ExecCommandBeginEvent> for ExecCommandBeginTracePayload<'a> {
             cwd,
             parsed_cmd,
             source,
+            timeout_ms,
             interaction_input,
         } = event;
         Self {
@@ -193,6 +196,7 @@ impl<'a> From<&'a ExecCommandBeginEvent> for ExecCommandBeginTracePayload<'a> {
             cwd: cwd.inferred_native_path_string(),
             parsed_cmd,
             source: *source,
+            timeout_ms: *timeout_ms,
             interaction_input: interaction_input.as_deref(),
         }
     }

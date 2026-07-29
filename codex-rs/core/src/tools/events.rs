@@ -114,6 +114,7 @@ async fn emit_exec_command_begin(ctx: ToolEventCtx<'_>, exec_input: &ExecCommand
                 cwd: exec_input.cwd.clone(),
                 parsed_cmd: exec_input.parsed_cmd.to_vec(),
                 source: exec_input.source,
+                timeout_ms: exec_input.timeout_ms,
                 interaction_input: exec_input.interaction_input.map(str::to_owned),
                 status: CommandExecutionStatus::InProgress,
                 stdout: None,
@@ -133,6 +134,7 @@ pub(crate) enum ToolEmitter {
         cwd: PathUri,
         source: ExecCommandSource,
         parsed_cmd: Vec<ParsedCommand>,
+        timeout_ms: Option<u64>,
         plugin_attribution: Option<PluginCommandAttribution>,
     },
     ApplyPatch {
@@ -155,6 +157,7 @@ impl ToolEmitter {
         command: Vec<String>,
         cwd: AbsolutePathBuf,
         source: ExecCommandSource,
+        timeout_ms: Option<u64>,
         plugin_attribution: Option<PluginCommandAttribution>,
     ) -> Self {
         let parsed_cmd = parse_command(&command);
@@ -163,6 +166,7 @@ impl ToolEmitter {
             cwd: PathUri::from_abs_path(&cwd),
             source,
             parsed_cmd,
+            timeout_ms,
             plugin_attribution,
         }
     }
@@ -205,6 +209,7 @@ impl ToolEmitter {
                     cwd,
                     source,
                     parsed_cmd,
+                    timeout_ms,
                     plugin_attribution,
                     ..
                 },
@@ -212,15 +217,16 @@ impl ToolEmitter {
             ) => {
                 emit_exec_stage(
                     ctx,
-                    ExecCommandInput::new(
+                    ExecCommandInput {
                         command,
                         cwd,
                         parsed_cmd,
-                        *source,
-                        /*interaction_input*/ None,
-                        /*process_id*/ None,
-                        plugin_attribution.as_ref(),
-                    ),
+                        source: *source,
+                        timeout_ms: *timeout_ms,
+                        interaction_input: None,
+                        process_id: None,
+                        plugin_attribution: plugin_attribution.as_ref(),
+                    },
                     stage,
                 )
                 .await;
@@ -347,15 +353,16 @@ impl ToolEmitter {
             ) => {
                 emit_exec_stage(
                     ctx,
-                    ExecCommandInput::new(
+                    ExecCommandInput {
                         command,
                         cwd,
                         parsed_cmd,
-                        *source,
-                        /*interaction_input*/ None,
-                        process_id.as_deref(),
-                        plugin_attribution.as_ref(),
-                    ),
+                        source: *source,
+                        timeout_ms: None,
+                        interaction_input: None,
+                        process_id: process_id.as_deref(),
+                        plugin_attribution: plugin_attribution.as_ref(),
+                    },
                     stage,
                 )
                 .await;
@@ -466,31 +473,10 @@ struct ExecCommandInput<'a> {
     cwd: &'a PathUri,
     parsed_cmd: &'a [ParsedCommand],
     source: ExecCommandSource,
+    timeout_ms: Option<u64>,
     interaction_input: Option<&'a str>,
     process_id: Option<&'a str>,
     plugin_attribution: Option<&'a PluginCommandAttribution>,
-}
-
-impl<'a> ExecCommandInput<'a> {
-    fn new(
-        command: &'a [String],
-        cwd: &'a PathUri,
-        parsed_cmd: &'a [ParsedCommand],
-        source: ExecCommandSource,
-        interaction_input: Option<&'a str>,
-        process_id: Option<&'a str>,
-        plugin_attribution: Option<&'a PluginCommandAttribution>,
-    ) -> Self {
-        Self {
-            command,
-            cwd,
-            parsed_cmd,
-            source,
-            interaction_input,
-            process_id,
-            plugin_attribution,
-        }
-    }
 }
 
 struct ExecCommandResult {
@@ -579,6 +565,7 @@ async fn emit_exec_end(
                 cwd: exec_input.cwd.clone(),
                 parsed_cmd: exec_input.parsed_cmd.to_vec(),
                 source: exec_input.source,
+                timeout_ms: exec_input.timeout_ms,
                 interaction_input: exec_input.interaction_input.map(str::to_owned),
                 status: exec_result.status.into(),
                 stdout: Some(exec_result.stdout),
@@ -664,11 +651,47 @@ mod tests {
     use codex_protocol::error::SandboxErr;
     use codex_protocol::exec_output::ExecToolCallOutput;
     use codex_protocol::items::TurnItem;
+    use codex_protocol::protocol::ExecCommandSource;
     use codex_protocol::protocol::PatchApplyStatus;
     use codex_utils_path_uri::PathUri;
     use std::sync::Arc;
     use tempfile::tempdir;
     use tokio::sync::Mutex;
+
+    #[tokio::test]
+    async fn shell_begin_emits_configured_timeout() {
+        let (session, turn, rx_event) =
+            make_session_and_context_with_dynamic_tools_and_rx(Vec::new()).await;
+        let emitter = ToolEmitter::shell(
+            vec!["echo".to_string(), "done".to_string()],
+            turn.config.cwd.clone(),
+            ExecCommandSource::Agent,
+            Some(1_234),
+            /*plugin_attribution*/ None,
+        );
+
+        emitter
+            .begin(ToolEventCtx::new(
+                session.as_ref(),
+                turn.as_ref(),
+                "call-id",
+                /*turn_diff_tracker*/ None,
+            ))
+            .await;
+
+        let started = rx_event.recv().await.expect("item started event");
+        assert!(matches!(
+            started.msg,
+            EventMsg::ItemStarted(event)
+                if matches!(
+                    event.item,
+                    TurnItem::CommandExecution(CommandExecutionItem {
+                        timeout_ms: Some(1_234),
+                        ..
+                    })
+                )
+        ));
+    }
 
     async fn assert_failed_apply_patch_tracks_committed_delta(
         out: Result<ExecToolCallOutput, ToolError>,

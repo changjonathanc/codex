@@ -3557,6 +3557,10 @@ pub struct ExecCommandBeginEvent {
     /// Where the command originated. Defaults to Agent for backward compatibility.
     #[serde(default)]
     pub source: ExecCommandSource,
+    /// The command's configured execution timeout in milliseconds, when it has a hard deadline.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub timeout_ms: Option<u64>,
     /// Raw input sent to a unified exec session (if this is an interaction event).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     #[ts(optional)]
@@ -5504,6 +5508,7 @@ mod tests {
                     cmd: "echo done".into(),
                 }],
                 source: ExecCommandSource::Agent,
+                timeout_ms: Some(10_000),
                 interaction_input: None,
                 status: CommandExecutionStatus::InProgress,
                 stdout: None,
@@ -5530,6 +5535,7 @@ mod tests {
                     cmd: "echo done".into(),
                 }],
                 source: ExecCommandSource::Agent,
+                timeout_ms: Some(10_000),
                 interaction_input: None,
                 status: CommandExecutionStatus::Completed,
                 stdout: Some("done\n".into()),
@@ -5549,6 +5555,7 @@ mod tests {
                 script_path,
                 turn_id,
                 started_at_ms: 10,
+                timeout_ms: Some(10_000),
                 ..
             })] if call_id == "exec-1"
                 && plugin_id.as_deref() == Some("sample@openai-curated")

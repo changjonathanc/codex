@@ -214,6 +214,10 @@ pub struct CommandExecutionItem {
     pub cwd: PathUri,
     pub parsed_cmd: Vec<ParsedCommand>,
     pub source: ExecCommandSource,
+    /// The command's configured execution timeout in milliseconds, when it has a hard deadline.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub timeout_ms: Option<u64>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     #[ts(optional)]
     pub interaction_input: Option<String>,

@@ -244,6 +244,7 @@ impl ChatWidget {
             id,
             command,
             source,
+            timeout_ms,
             command_actions,
             ..
         } = item
@@ -252,6 +253,9 @@ impl ChatWidget {
         };
         let (command, parsed_cmd) =
             command_execution_command_and_parsed(&command, &command_actions);
+        let timeout = timeout_ms
+            .and_then(|timeout_ms| u64::try_from(timeout_ms).ok())
+            .map(Duration::from_millis);
         // Ensure the status indicator is visible while the command runs.
         self.bottom_pane.ensure_status_indicator();
         let parsed_cmd = self.annotate_skill_reads_in_parsed_cmd(parsed_cmd);
@@ -289,6 +293,7 @@ impl ChatWidget {
                 command.clone(),
                 parsed_cmd.clone(),
                 source,
+                timeout,
                 /*interaction_input*/ None,
             )
         {
@@ -301,6 +306,7 @@ impl ChatWidget {
                 command,
                 parsed_cmd,
                 source,
+                timeout,
                 /*interaction_input*/ None,
                 self.config.animations,
             )));
@@ -337,6 +343,7 @@ impl ChatWidget {
             command_actions,
             aggregated_output,
             exit_code,
+            timeout_ms,
             duration_ms,
             ..
         } = item
@@ -349,6 +356,9 @@ impl ChatWidget {
             .map(codex_app_server_protocol::CommandAction::into_core)
             .collect();
         let duration = Duration::from_millis(duration_ms.unwrap_or_default().max(0) as u64);
+        let timeout = timeout_ms
+            .and_then(|timeout_ms| u64::try_from(timeout_ms).ok())
+            .map(Duration::from_millis);
         let exit_code = exit_code.unwrap_or_default();
         let aggregated_output = aggregated_output.unwrap_or_default();
 
@@ -409,6 +419,7 @@ impl ChatWidget {
                     command,
                     parsed,
                     source,
+                    timeout,
                     /*interaction_input*/ None,
                     self.config.animations,
                 );
@@ -426,6 +437,7 @@ impl ChatWidget {
                     command,
                     parsed,
                     source,
+                    timeout,
                     /*interaction_input*/ None,
                     self.config.animations,
                 );

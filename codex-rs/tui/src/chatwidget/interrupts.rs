@@ -184,6 +184,7 @@ mod tests {
             script_path: None,
             source: CommandExecutionSource::Agent,
             status: CommandExecutionStatus::InProgress,
+            timeout_ms: None,
             command_actions: Vec::new(),
             aggregated_output: None,
             exit_code: None,

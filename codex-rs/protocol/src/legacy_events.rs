@@ -168,6 +168,7 @@ impl CommandExecutionItem {
             cwd: self.cwd.clone(),
             parsed_cmd: self.parsed_cmd.clone(),
             source: self.source,
+            timeout_ms: self.timeout_ms,
             interaction_input: self.interaction_input.clone(),
         })
     }

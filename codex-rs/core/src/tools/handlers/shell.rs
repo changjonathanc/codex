@@ -162,6 +162,7 @@ async fn run_exec_like(args: RunExecLikeArgs) -> Result<FunctionToolOutput, Func
         exec_params.command.clone(),
         exec_params.cwd.clone(),
         source,
+        exec_params.expiration.timeout_ms(),
         plugin_attribution,
     );
     let event_ctx = ToolEventCtx::new(

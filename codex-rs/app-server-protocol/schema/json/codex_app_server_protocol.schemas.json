@@ -19341,6 +19341,15 @@
               "status": {
                 "$ref": "#/definitions/v2/CommandExecutionStatus"
               },
+              "timeoutMs": {
+                "default": null,
+                "description": "The command's configured execution timeout in milliseconds, when it has a hard deadline.",
+                "format": "int64",
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
               "type": {
                 "enum": [
                   "commandExecution"

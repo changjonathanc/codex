@@ -20,6 +20,7 @@ fn agent_status_uses_bounded_buffered_activity() {
                 script_path: None,
                 source: CommandExecutionSource::Agent,
                 status: CommandExecutionStatus::Completed,
+                timeout_ms: None,
                 command_actions: Vec::new(),
                 aggregated_output: Some("unbounded output\n".repeat(10_000)),
                 exit_code: Some(0),
