@@ -656,6 +656,7 @@ pub(super) fn sample_command_execution_item_with_id(
         process_id: Some("pid-1".to_string()),
         source: CommandExecutionSource::Agent,
         status,
+        timeout_ms: None,
         command_actions: Vec::new(),
         aggregated_output: None,
         exit_code,

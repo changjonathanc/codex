@@ -107,6 +107,9 @@ pub fn build_command_execution_begin_item(payload: &ExecCommandBeginEvent) -> Th
         process_id: payload.process_id.clone(),
         source: payload.source.into(),
         status: CommandExecutionStatus::InProgress,
+        timeout_ms: payload
+            .timeout_ms
+            .and_then(|timeout_ms| i64::try_from(timeout_ms).ok()),
         command_actions: presentation.command_actions,
         aggregated_output: None,
         exit_code: None,
@@ -135,6 +138,7 @@ pub fn build_command_execution_end_item(payload: &ExecCommandEndEvent) -> Thread
         process_id: payload.process_id.clone(),
         source: payload.source.into(),
         status: (&payload.status).into(),
+        timeout_ms: None,
         command_actions: presentation.command_actions,
         aggregated_output,
         exit_code: Some(payload.exit_code),
@@ -212,6 +216,7 @@ pub fn build_item_from_guardian_event(
                 process_id: None,
                 source: CommandExecutionSource::Agent,
                 status,
+                timeout_ms: None,
                 command_actions,
                 aggregated_output: None,
                 exit_code: None,
@@ -252,6 +257,7 @@ pub fn build_item_from_guardian_event(
                 process_id: None,
                 source: CommandExecutionSource::Agent,
                 status,
+                timeout_ms: None,
                 command_actions,
                 aggregated_output: None,
                 exit_code: None,
