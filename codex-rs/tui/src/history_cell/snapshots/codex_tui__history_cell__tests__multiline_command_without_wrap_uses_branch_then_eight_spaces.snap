@@ -1,7 +1,7 @@
 ---
-source: tui/src/history_cell.rs
+source: tui/src/history_cell/tests.rs
 expression: rendered
 ---
-• Ran echo one
+• Ran (1ms) echo one
   │ echo two
   └ (no output)

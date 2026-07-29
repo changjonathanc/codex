@@ -978,6 +978,7 @@ pub(super) fn begin_exec_with_source(
         script_path: None,
         source,
         status: AppServerCommandExecutionStatus::InProgress,
+        timeout_ms: None,
         command_actions,
         aggregated_output: None,
         exit_code: None,
@@ -1005,6 +1006,7 @@ pub(super) fn begin_unified_exec_startup(
         script_path: None,
         source: ExecCommandSource::UnifiedExecStartup,
         status: AppServerCommandExecutionStatus::InProgress,
+        timeout_ms: None,
         command_actions: Vec::new(),
         aggregated_output: None,
         exit_code: None,
@@ -1222,6 +1224,7 @@ pub(super) fn end_exec(
         plugin_id,
         script_path,
         source,
+        timeout_ms,
         command_actions,
         ..
     } = begin_item
@@ -1245,6 +1248,7 @@ pub(super) fn end_exec(
             } else {
                 AppServerCommandExecutionStatus::Failed
             },
+            timeout_ms,
             command_actions,
             aggregated_output: (!aggregated.is_empty()).then_some(aggregated),
             exit_code: Some(exit_code),

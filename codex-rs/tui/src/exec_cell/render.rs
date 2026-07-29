@@ -61,6 +61,7 @@ pub(crate) fn new_active_exec_command(
     command: Vec<String>,
     parsed: Vec<ParsedCommand>,
     source: ExecCommandSource,
+    timeout: Option<std::time::Duration>,
     interaction_input: Option<String>,
     animations_enabled: bool,
 ) -> ExecCell {
@@ -72,6 +73,7 @@ pub(crate) fn new_active_exec_command(
             output: None,
             source,
             start_time: Some(Instant::now()),
+            timeout,
             duration: None,
             interaction_input,
         },
@@ -475,10 +477,21 @@ impl ExecCell {
             "Ran"
         };
 
+        let timing = if self.is_active() {
+            call.timeout
+                .map(|timeout| format!("timeout {}", format_duration(timeout)))
+        } else {
+            call.duration.map(format_duration)
+        };
         let header_line = if is_interaction {
             Line::from(vec![bullet.clone(), " ".into()])
         } else {
-            Line::from(vec![bullet.clone(), " ".into(), title.bold(), " ".into()])
+            let mut spans = vec![bullet.clone(), " ".into(), title.bold()];
+            if let Some(timing) = timing {
+                spans.extend([" (".dim(), timing.dim(), ")".dim()]);
+            }
+            spans.push(" ".into());
+            Line::from(spans)
         };
         let header_prefix_width = header_line.width();
         let mut header = HyperlinkLine::from(header_line.clone());
@@ -909,6 +922,7 @@ mod tests {
             output: Some(output),
             source: ExecCommandSource::UserShell,
             start_time: None,
+            timeout: None,
             duration: None,
             interaction_input: None,
         };
@@ -1036,6 +1050,7 @@ mod tests {
             vec!["bash".into(), "-lc".into(), "echo output".into()],
             Vec::new(),
             ExecCommandSource::Agent,
+            /*timeout*/ None,
             /*interaction_input*/ None,
             /*animations_enabled*/ false,
         );
@@ -1083,6 +1098,7 @@ mod tests {
             vec!["bash".into(), "-lc".into(), "echo output".into()],
             Vec::new(),
             ExecCommandSource::Agent,
+            /*timeout*/ None,
             /*interaction_input*/ None,
             /*animations_enabled*/ false,
         );
@@ -1185,6 +1201,7 @@ mod tests {
             output: None,
             source: ExecCommandSource::UserShell,
             start_time: None,
+            timeout: None,
             duration: None,
             interaction_input: None,
         };
@@ -1217,6 +1234,7 @@ mod tests {
             output: None,
             source: ExecCommandSource::Agent,
             start_time: Some(Instant::now()),
+            timeout: None,
             duration: None,
             interaction_input: None,
         };
@@ -1238,6 +1256,60 @@ mod tests {
     }
 
     #[test]
+    fn active_command_displays_timeout() {
+        let call = ExecCall {
+            call_id: "call-id".to_string(),
+            command: vec!["bash".into(), "-lc".into(), "sleep 60".into()],
+            parsed: Vec::new(),
+            output: None,
+            source: ExecCommandSource::Agent,
+            start_time: Some(Instant::now()),
+            timeout: Some(std::time::Duration::from_secs(90)),
+            duration: None,
+            interaction_input: None,
+        };
+
+        let cell = ExecCell::new(call, /*animations_enabled*/ false);
+        let rendered: Vec<String> = cell
+            .command_display_lines(/*width*/ 80)
+            .iter()
+            .map(render_line_text)
+            .collect();
+
+        insta::assert_snapshot!(rendered.join("\n"), @"• Running (timeout 1m 30s) sleep 60");
+    }
+
+    #[test]
+    fn completed_command_displays_duration() {
+        let call = ExecCall {
+            call_id: "call-id".to_string(),
+            command: vec!["bash".into(), "-lc".into(), "echo done".into()],
+            parsed: Vec::new(),
+            output: Some(CommandOutput::default()),
+            source: ExecCommandSource::Agent,
+            start_time: None,
+            timeout: Some(std::time::Duration::from_secs(90)),
+            duration: Some(std::time::Duration::from_millis(2_345)),
+            interaction_input: None,
+        };
+
+        let cell = ExecCell::new(call, /*animations_enabled*/ false);
+        let rendered: Vec<String> = cell
+            .command_display_lines(/*width*/ 80)
+            .iter()
+            .map(render_line_text)
+            .collect();
+
+        assert_eq!(
+            rendered,
+            vec![
+                "• Ran (2.35s) echo done".to_string(),
+                "  └ (no output)".to_string(),
+            ]
+        );
+    }
+
+    #[test]
     fn exploring_display_does_not_split_long_url_like_search_query() {
         let url_like = "example.test/api/v1/projects/alpha-team/releases/2026-02-17/builds/1234567890/artifacts/reports/performance/summary/detail/with/a/very/long/path";
         let call = ExecCall {
@@ -1251,6 +1323,7 @@ mod tests {
             output: None,
             source: ExecCommandSource::Agent,
             start_time: None,
+            timeout: None,
             duration: None,
             interaction_input: None,
         };
@@ -1288,6 +1361,7 @@ mod tests {
             output: Some(CommandOutput::new(/*exit_code*/ 0, url.to_string())),
             source: ExecCommandSource::UserShell,
             start_time: None,
+            timeout: None,
             duration: None,
             interaction_input: None,
         };
@@ -1321,6 +1395,7 @@ mod tests {
             output: Some(CommandOutput::new(/*exit_code*/ 0, url.to_string())),
             source: ExecCommandSource::Agent,
             start_time: None,
+            timeout: None,
             duration: None,
             interaction_input: None,
         };

@@ -1,0 +1,5 @@
+---
+source: tui/src/chatwidget/tests/app_server.rs
+expression: active_blob(&chat)
+---
+• Running (timeout 1m 30s) sleep 60

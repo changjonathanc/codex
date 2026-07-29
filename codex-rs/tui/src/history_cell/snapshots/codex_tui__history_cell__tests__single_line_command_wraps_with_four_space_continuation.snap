@@ -1,8 +1,9 @@
 ---
-source: tui/src/history_cell.rs
+source: tui/src/history_cell/tests.rs
 expression: rendered
 ---
-• Ran a_very_long_token_
-  │ without_spaces_to_
-  │ force_wrapping
+• Ran (1ms) a_very_long_
+  │ token_withou
+  │ t_spaces_to_
+  │ … +2 lines
   └ (no output)

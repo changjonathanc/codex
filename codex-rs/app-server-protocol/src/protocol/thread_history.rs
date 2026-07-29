@@ -1666,7 +1666,7 @@ impl TurnItemIndex {
         items.push(item);
     }
 
-    fn upsert<'a>(&mut self, items: &'a mut Vec<ThreadItem>, item: ThreadItem) -> &'a ThreadItem {
+    fn upsert<'a>(&mut self, items: &'a mut Vec<ThreadItem>, mut item: ThreadItem) -> &'a ThreadItem {
         if self.positions.is_none() && items.len() >= TURN_ITEM_INDEX_THRESHOLD {
             let mut positions = HashMap::with_capacity(items.len());
             for (index, existing) in items.iter().enumerate() {
@@ -1680,6 +1680,14 @@ impl TurnItemIndex {
             None => items.iter().position(|existing| existing.id() == item.id()),
         };
         if let Some(index) = existing_index {
+            if let (
+                ThreadItem::CommandExecution { timeout_ms: existing_timeout_ms, .. },
+                ThreadItem::CommandExecution { timeout_ms, .. },
+            ) = (&items[index], &mut item)
+                && timeout_ms.is_none()
+            {
+                *timeout_ms = *existing_timeout_ms;
+            }
             items[index] = item;
             &items[index]
         } else {
@@ -2381,7 +2389,7 @@ mod tests {
     }
 
     #[test]
-    fn preserves_command_plugin_id_and_redacts_secrets_across_legacy_upsert() {
+    fn preserves_command_metadata_and_redacts_secrets_across_legacy_upsert() {
         let turn_id = "turn-1";
         let thread_id = ThreadId::new();
         let command = vec![
@@ -2406,6 +2414,7 @@ mod tests {
             cwd: test_path_buf("/tmp").abs().into(),
             parsed_cmd: parsed_cmd.clone(),
             source: ExecCommandSource::Agent,
+            timeout_ms: Some(10_000),
             interaction_input: None,
             status: CoreCommandExecutionStatus::Completed,
             stdout: Some("hello world\n".to_string()),
@@ -2435,6 +2444,7 @@ mod tests {
                 cwd: test_path_buf("/tmp").abs().into(),
                 parsed_cmd: parsed_cmd.clone(),
                 source: ExecCommandSource::Agent,
+                timeout_ms: Some(10_000),
                 interaction_input: None,
             }),
             EventMsg::ItemCompleted(ItemCompletedEvent {
@@ -2494,6 +2504,7 @@ mod tests {
                 process_id: Some("pid-1".to_string()),
                 source: CommandExecutionSource::Agent,
                 status: CommandExecutionStatus::InProgress,
+                timeout_ms: Some(10_000),
                 command_actions: vec![CommandAction::Unknown {
                     command:
                         "git -c 'http.extraHeader=Authorization: Bearer [REDACTED_SECRET]' push"
@@ -2521,6 +2532,7 @@ mod tests {
                 process_id: Some("pid-1".to_string()),
                 source: CommandExecutionSource::Agent,
                 status: CommandExecutionStatus::Completed,
+                timeout_ms: Some(10_000),
                 command_actions: vec![CommandAction::Unknown {
                     command:
                         "git -c 'http.extraHeader=Authorization: Bearer [REDACTED_SECRET]' push"
@@ -3210,6 +3222,7 @@ mod tests {
                 process_id: Some("pid-1".into()),
                 source: CommandExecutionSource::Agent,
                 status: CommandExecutionStatus::Completed,
+                timeout_ms: None,
                 command_actions: vec![CommandAction::Unknown {
                     command: "echo hello world".into(),
                 }],
@@ -3485,6 +3498,7 @@ mod tests {
                 process_id: Some("pid-2".into()),
                 source: CommandExecutionSource::Agent,
                 status: CommandExecutionStatus::Declined,
+                timeout_ms: None,
                 command_actions: vec![CommandAction::Unknown {
                     command: "ls".into(),
                 }],
@@ -3596,6 +3610,7 @@ mod tests {
                 process_id: None,
                 source: CommandExecutionSource::Agent,
                 status: CommandExecutionStatus::Declined,
+                timeout_ms: None,
                 command_actions: vec![CommandAction::Unknown {
                     command: "rm -rf /tmp/guardian".into(),
                 }],
@@ -3671,6 +3686,7 @@ mod tests {
                 process_id: None,
                 source: CommandExecutionSource::Agent,
                 status: CommandExecutionStatus::InProgress,
+                timeout_ms: None,
                 command_actions: vec![CommandAction::Unknown {
                     command: "/bin/rm -f /tmp/file.sqlite".into(),
                 }],
@@ -3875,6 +3891,7 @@ mod tests {
                 process_id: Some("pid-42".into()),
                 source: CommandExecutionSource::Agent,
                 status: CommandExecutionStatus::Completed,
+                timeout_ms: None,
                 command_actions: vec![CommandAction::Unknown {
                     command: "echo done".into(),
                 }],

@@ -79,6 +79,7 @@ fn exec_command_trace_payloads_use_inferred_native_cwd() -> anyhow::Result<()> {
         cwd: "file:///C:/windows".parse()?,
         parsed_cmd: Vec::new(),
         source: ExecCommandSource::Agent,
+        timeout_ms: Some(10_000),
         interaction_input: None,
     });
     let end = EventMsg::ExecCommandEnd(ExecCommandEndEvent {
@@ -118,7 +119,8 @@ fn exec_command_trace_payloads_use_inferred_native_cwd() -> anyhow::Result<()> {
             "command": ["pwd"],
             "cwd": r"C:\windows",
             "parsed_cmd": [],
-            "source": "agent"
+            "source": "agent",
+            "timeout_ms": 10_000
         })
     );
 
