@@ -16,7 +16,7 @@ exec and hook running:
 "                                                                                "
 "  GPT-5.6-Sol default · /tmp/project                                            "
 history after exec:
-• Ran echo done
+• Ran (5ms) echo done
   └ done
 
 hook running after exec:
