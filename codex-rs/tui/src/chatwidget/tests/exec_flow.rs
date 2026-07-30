@@ -504,6 +504,74 @@ async fn overlapping_exploring_exec_end_is_not_misclassified_as_orphan() {
 }
 
 #[tokio::test]
+async fn overlapping_agent_commands_render_as_one_parallel_group() {
+    use crate::exec_cell::ExecCell;
+    use std::time::Instant;
+
+    let (mut chat, mut rx, _op_rx) = make_chatwidget_manual(/*model_override*/ None).await;
+    let first = begin_exec(&mut chat, "call-nc-1", "nc -vz -G 5 106.104.175.164 9999");
+    let second = begin_exec(&mut chat, "call-nc-2", "nc -vz -G 5 175.182.184.125 9999");
+    let third = begin_exec(&mut chat, "call-nc-3", "nc -vz -G 5 175.182.185.183 9999");
+    let fourth = begin_exec(&mut chat, "call-nc-4", "nc -vz -G 5 192.168.0.159 9999");
+    assert!(drain_insert_history(&mut rx).is_empty());
+
+    // Keep the wall-time snapshot deterministic while exercising the real event lifecycle.
+    let common_start = Instant::now();
+    let cell = chat
+        .transcript
+        .active_cell
+        .as_mut()
+        .and_then(|cell| cell.as_any_mut().downcast_mut::<ExecCell>())
+        .expect("active parallel exec cell");
+    assert_eq!(cell.calls.len(), 4);
+    for call in &mut cell.calls {
+        call.start_time = Some(common_start);
+    }
+    assert_chatwidget_snapshot!("parallel_exec_all_running", active_blob(&chat));
+
+    end_exec(
+        &mut chat,
+        second,
+        "",
+        "nc: connectx to 175.182.184.125 port 9999 (tcp) failed: Operation timed out\n",
+        /*exit_code*/ 1,
+    );
+    end_exec(
+        &mut chat,
+        fourth,
+        "",
+        "nc: connectx to 192.168.0.159 port 9999 (tcp) failed: Operation timed out\n",
+        /*exit_code*/ 1,
+    );
+    assert!(drain_insert_history(&mut rx).is_empty());
+    assert_chatwidget_snapshot!("parallel_exec_mixed_progress", active_blob(&chat));
+
+    end_exec(
+        &mut chat,
+        first,
+        "",
+        "nc: connectx to 106.104.175.164 port 9999 (tcp) failed: Operation timed out\n",
+        /*exit_code*/ 1,
+    );
+    assert!(drain_insert_history(&mut rx).is_empty());
+    end_exec(
+        &mut chat,
+        third,
+        "",
+        "nc: connectx to 175.182.185.183 port 9999 (tcp) failed: Operation timed out\n",
+        /*exit_code*/ 1,
+    );
+
+    let cells = drain_insert_history(&mut rx);
+    assert_eq!(cells.len(), 1, "parallel group should flush once");
+    assert_chatwidget_snapshot!("parallel_exec_completed", lines_to_single_string(&cells[0]));
+    assert!(
+        chat.transcript.active_cell.is_none(),
+        "completed parallel group should no longer be active"
+    );
+}
+
+#[tokio::test]
 async fn exec_history_shows_unified_exec_startup_commands() {
     let (mut chat, mut rx, _op_rx) = make_chatwidget_manual(/*model_override*/ None).await;
     chat.on_task_started();

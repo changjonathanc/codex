@@ -1,9 +1,10 @@
 //! Data model for grouped exec-call history cells in the TUI transcript.
 //!
-//! An `ExecCell` can represent either a single command or an "exploring" group of related read/
-//! list/search commands. The chat widget relies on stable `call_id` matching to route progress and
-//! end events into the right cell, and it treats "call id not found" as a real signal (for
-//! example, an orphan end that should render as a separate history entry).
+//! An `ExecCell` can represent a single command, an "exploring" group of related read/list/search
+//! commands, or a group of agent commands whose lifetimes overlap. The chat widget relies on stable
+//! `call_id` matching to route progress and end events into the right cell, and it treats "call id
+//! not found" as a real signal (for example, an orphan end that should render as a separate history
+//! entry).
 
 use std::borrow::Cow;
 use std::time::Duration;
@@ -67,22 +68,37 @@ pub(crate) struct ExecCall {
     pub(crate) parsed: Vec<ParsedCommand>,
     pub(crate) output: Option<CommandOutput>,
     pub(crate) source: ExecCommandSource,
+    /// Local start instant, retained after completion so parallel groups can report wall time.
     pub(crate) start_time: Option<Instant>,
     pub(crate) timeout: Option<Duration>,
     pub(crate) duration: Option<Duration>,
     pub(crate) interaction_input: Option<String>,
 }
 
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum ExecCellKind {
+    Command,
+    Exploring,
+    Parallel,
+}
+
 #[derive(Debug)]
 pub(crate) struct ExecCell {
     pub(crate) calls: Vec<ExecCall>,
+    kind: ExecCellKind,
     animations_enabled: bool,
 }
 
 impl ExecCell {
     pub(crate) fn new(call: ExecCall, animations_enabled: bool) -> Self {
+        let kind = if Self::is_exploring_call(&call) {
+            ExecCellKind::Exploring
+        } else {
+            ExecCellKind::Command
+        };
         Self {
             calls: vec![call],
+            kind,
             animations_enabled,
         }
     }
@@ -107,11 +123,19 @@ impl ExecCell {
             duration: None,
             interaction_input,
         };
-        if self.is_exploring_cell() && Self::is_exploring_call(&call) {
-            self.calls.push(call);
-            true
-        } else {
-            false
+        match self.kind {
+            ExecCellKind::Exploring if Self::is_exploring_call(&call) => {
+                self.calls.push(call);
+                true
+            }
+            ExecCellKind::Command | ExecCellKind::Parallel
+                if self.is_active() && self.can_group_parallel_call(&call) =>
+            {
+                self.kind = ExecCellKind::Parallel;
+                self.calls.push(call);
+                true
+            }
+            ExecCellKind::Command | ExecCellKind::Exploring | ExecCellKind::Parallel => false,
         }
     }
 
@@ -131,12 +155,11 @@ impl ExecCell {
         };
         call.output = Some(output);
         call.duration = Some(duration);
-        call.start_time = None;
         true
     }
 
     pub(crate) fn should_flush(&self) -> bool {
-        !self.is_exploring_cell() && self.calls.iter().all(|c| c.duration.is_some())
+        !self.is_exploring_cell() && !self.is_active()
     }
 
     pub(crate) fn mark_failed(&mut self) {
@@ -146,7 +169,6 @@ impl ExecCell {
                     .start_time
                     .map(|st| st.elapsed())
                     .unwrap_or_else(|| Duration::from_millis(0));
-                call.start_time = None;
                 call.duration = Some(elapsed);
                 call.output
                     .get_or_insert_with(CommandOutput::default)
@@ -156,7 +178,11 @@ impl ExecCell {
     }
 
     pub(crate) fn is_exploring_cell(&self) -> bool {
-        self.calls.iter().all(Self::is_exploring_call)
+        self.kind == ExecCellKind::Exploring
+    }
+
+    pub(crate) fn is_parallel_cell(&self) -> bool {
+        self.kind == ExecCellKind::Parallel
     }
 
     pub(crate) fn is_active(&self) -> bool {
@@ -168,6 +194,31 @@ impl ExecCell {
             .iter()
             .find(|c| c.duration.is_none())
             .and_then(|c| c.start_time)
+    }
+
+    pub(crate) fn first_start_time(&self) -> Option<Instant> {
+        self.calls.iter().filter_map(|call| call.start_time).min()
+    }
+
+    /// Returns first-start-to-last-finish time for a completed parallel group.
+    pub(crate) fn parallel_duration(&self) -> Option<Duration> {
+        if !self.is_parallel_cell() || self.is_active() {
+            return None;
+        }
+
+        let longest_call = self.calls.iter().filter_map(|call| call.duration).max()?;
+        let Some(first_start) = self.first_start_time() else {
+            return Some(longest_call);
+        };
+        let measured_span = self
+            .calls
+            .iter()
+            .filter_map(|call| {
+                Some(call.start_time?.saturating_duration_since(first_start) + call.duration?)
+            })
+            .max();
+
+        Some(measured_span.map_or(longest_call, |span| span.max(longest_call)))
     }
 
     pub(crate) fn animations_enabled(&self) -> bool {
@@ -204,6 +255,14 @@ impl ExecCell {
                         | ParsedCommand::Search { .. }
                 )
             })
+    }
+
+    fn can_group_parallel_call(&self, call: &ExecCall) -> bool {
+        matches!(call.source, ExecCommandSource::Agent)
+            && self
+                .calls
+                .iter()
+                .all(|existing| matches!(existing.source, ExecCommandSource::Agent))
     }
 }
 

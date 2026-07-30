@@ -1,0 +1,17 @@
+---
+source: tui/src/chatwidget/tests/exec_flow.rs
+expression: "lines_to_single_string(&cells[0])"
+---
+• Ran 4 commands in parallel (5ms wall)
+  ├─ ✗ (5ms) nc -vz -G 5 106.104.175.164 9999
+  │  └─ nc: connectx to 106.104.175.164 port 9999 (tcp) failed: Operation timed
+  │     out
+  ├─ ✗ (5ms) nc -vz -G 5 175.182.184.125 9999
+  │  └─ nc: connectx to 175.182.184.125 port 9999 (tcp) failed: Operation timed
+  │     out
+  ├─ ✗ (5ms) nc -vz -G 5 175.182.185.183 9999
+  │  └─ nc: connectx to 175.182.185.183 port 9999 (tcp) failed: Operation timed
+  │     out
+  └─ ✗ (5ms) nc -vz -G 5 192.168.0.159 9999
+     └─ nc: connectx to 192.168.0.159 port 9999 (tcp) failed: Operation timed
+        out
