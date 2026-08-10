@@ -24,6 +24,7 @@ use tokio::time::Instant;
 use tokio::time::timeout;
 use tracing::debug;
 use tracing::trace;
+use tracing::warn;
 
 const X_REASONING_INCLUDED_HEADER: &str = "x-reasoning-included";
 const X_CODEX_TURN_STATE_HEADER: &str = "x-codex-turn-state";
@@ -389,10 +390,23 @@ pub fn process_responses_event(
         }
         "response.failed" => {
             if let Some(resp_val) = event.response {
+                let response_id = resp_val
+                    .get("id")
+                    .and_then(Value::as_str)
+                    .unwrap_or("unknown")
+                    .to_string();
+                let response_status = resp_val
+                    .get("status")
+                    .and_then(Value::as_str)
+                    .unwrap_or("unknown")
+                    .to_string();
                 let mut response_error = ApiError::Stream("response.failed event received".into());
                 if let Some(error) = resp_val.get("error")
                     && let Ok(error) = serde_json::from_value::<Error>(error.clone())
                 {
+                    let error_type = error.r#type.clone().unwrap_or_default();
+                    let error_code = error.code.clone().unwrap_or_default();
+                    let error_message = error.message.clone().unwrap_or_default();
                     if is_context_window_error(&error) {
                         response_error = ApiError::ContextWindowExceeded;
                     } else if is_quota_exceeded_error(&error) {
@@ -415,6 +429,21 @@ pub fn process_responses_event(
                         let message = error.message.unwrap_or_default();
                         response_error = ApiError::Retryable { message, delay };
                     }
+                    warn!(
+                        response_id = %response_id,
+                        response_status = %response_status,
+                        error_type = %error_type,
+                        error_code = %error_code,
+                        error_message = %error_message,
+                        classified_error = %response_error,
+                        "Responses API response.failed event"
+                    );
+                } else {
+                    warn!(
+                        response_id = %response_id,
+                        response_status = %response_status,
+                        "Responses API response.failed event had no parseable error"
+                    );
                 }
                 return Err(ResponsesEventError::Api(response_error));
             }

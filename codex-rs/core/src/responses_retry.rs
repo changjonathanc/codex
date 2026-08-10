@@ -9,6 +9,7 @@ use crate::util::backoff;
 use codex_protocol::error::CodexErr;
 use codex_protocol::protocol::EventMsg;
 use codex_protocol::protocol::WarningEvent;
+use tracing::error;
 use tracing::warn;
 
 #[derive(Debug, Clone, Copy)]
@@ -70,6 +71,14 @@ pub(crate) async fn handle_retryable_response_stream_error(
         return Ok(());
     }
 
+    error!(
+        turn_id = %turn_context.sub_id,
+        request = ?request,
+        retries,
+        max_retries,
+        stream_error = %err,
+        "stream retry budget exhausted"
+    );
     Err(err)
 }
 

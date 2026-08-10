@@ -13,6 +13,7 @@ use std::time::Duration;
 use tokio::time::Instant;
 use tokio_tungstenite::tungstenite::Error;
 use tokio_tungstenite::tungstenite::Message;
+use tracing::warn;
 
 /// Generic telemetry.
 pub trait SseTelemetry: Send + Sync {
@@ -84,6 +85,14 @@ where
         async move {
             let start = Instant::now();
             let result = send(req).await;
+            if let Err(err) = &result {
+                warn!(
+                    request_attempt = attempt,
+                    http_status = ?http_status(err),
+                    transport_error = %err,
+                    "Responses API HTTP request attempt failed"
+                );
+            }
             if let Some(t) = telemetry.as_ref() {
                 let (status, err) = match &result {
                     Ok(resp) => (Some(resp.status()), None),
