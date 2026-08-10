@@ -405,7 +405,6 @@ impl CodexErr {
             | CodexErrorDetails::Spawn
             | CodexErrorDetails::SessionConfiguredNotFirstEvent
             | CodexErrorDetails::UsageLimitReached(_)
-            | CodexErrorDetails::ServerOverloaded
             | CodexErrorDetails::FlexUnavailable
             | CodexErrorDetails::CyberPolicy { .. }
             | CodexErrorDetails::BioPolicy { .. }
@@ -419,6 +418,7 @@ impl CodexErr {
             | CodexErrorDetails::ConnectionFailed(_)
             | CodexErrorDetails::InternalServerError
             | CodexErrorDetails::InternalAgentDied
+            | CodexErrorDetails::ServerOverloaded
             | CodexErrorDetails::Io(_)
             | CodexErrorDetails::Json(_)
             | CodexErrorDetails::TokioJoin(_) => Some(
