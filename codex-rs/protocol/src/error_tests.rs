@@ -41,6 +41,13 @@ fn retryability_preserves_error_details_distinctions() {
                 status: StatusCode::TOO_MANY_REQUESTS,
                 request_id: None,
             }),
+            true,
+        ),
+        (
+            CodexErr::RetryLimit(RetryLimitReachedError {
+                status: StatusCode::INTERNAL_SERVER_ERROR,
+                request_id: None,
+            }),
             false,
         ),
         (
