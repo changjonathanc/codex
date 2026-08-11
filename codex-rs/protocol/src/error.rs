@@ -398,7 +398,6 @@ impl CodexErr {
             | CodexErrorDetails::UnsupportedOperation(_)
             | CodexErrorDetails::Sandbox(_)
             | CodexErrorDetails::LandlockSandboxExecutableNotProvided
-            | CodexErrorDetails::RetryLimit(_)
             | CodexErrorDetails::ContextWindowExceeded
             | CodexErrorDetails::ThreadNotFound(_)
             | CodexErrorDetails::AgentLimitReached { .. }
@@ -409,6 +408,10 @@ impl CodexErr {
             | CodexErrorDetails::CyberPolicy { .. }
             | CodexErrorDetails::BioPolicy { .. }
             | CodexErrorDetails::MisalignmentPolicyViolation { .. } => None,
+            CodexErrorDetails::RetryLimit(error) =>
+                (error.status == StatusCode::TOO_MANY_REQUESTS).then(|| {
+                    self.server_retry_delay().unwrap_or_else(|| backoff(retry_count))
+                }),
             CodexErrorDetails::Stream(..)
             | CodexErrorDetails::RateLimitExceeded(_)
             | CodexErrorDetails::Timeout
