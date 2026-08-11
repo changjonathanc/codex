@@ -439,7 +439,10 @@ impl CodexErr {
             | CodexErrorDetails::CyberPolicy { .. }
             | CodexErrorDetails::BioPolicy { .. }
             | CodexErrorDetails::MisalignmentPolicyViolation { .. } => None,
-            CodexErrorDetails::RetryLimit(_) => self.server_retry_delay(),
+            CodexErrorDetails::RetryLimit(error) =>
+                (error.status == StatusCode::TOO_MANY_REQUESTS).then(|| {
+                    self.server_retry_delay().unwrap_or_else(|| backoff(retry_count))
+                }),
             CodexErrorDetails::Stream(..)
             | CodexErrorDetails::ContentFilter
             | CodexErrorDetails::RateLimitExceeded(_)
