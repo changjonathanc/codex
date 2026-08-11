@@ -18,4 +18,17 @@ if [ "${6:-}" = "--enable" ] && [ "${7:-}" = "unified_exec" ]; then
     set -- "$arg1" "$arg2" "$arg3" "$arg4" "$arg5" "$@"
 fi
 
+# The Harbor task container is the sandbox boundary. Apply the same bypass to
+# recursive Codex invocations that Harbor already applies to the top-level one.
+has_bypass=false
+for arg do
+    if [ "$arg" = "--dangerously-bypass-approvals-and-sandbox" ]; then
+        has_bypass=true
+        break
+    fi
+done
+if [ "$has_bypass" = false ]; then
+    set -- --dangerously-bypass-approvals-and-sandbox "$@"
+fi
+
 exec "${CODEX_EXEC_BIN:-/usr/local/lib/codex-exec}" "$@"
