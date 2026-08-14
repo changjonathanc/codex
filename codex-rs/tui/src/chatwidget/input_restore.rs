@@ -659,9 +659,6 @@ impl ChatWidget {
         }
         self.input_queue.recovered_queue &= self.input_queue.has_queued_follow_up_messages()
             || !self.input_queue.pending_steers.is_empty();
-        let effort = self.effective_reasoning_effort();
-        self.bottom_pane
-            .set_active_reasoning_effort_baseline(effort.as_ref());
         self.turn_lifecycle
             .restore_running(self.turn_lifecycle.agent_turn_running, Instant::now());
         self.update_task_running_state();
