@@ -111,65 +111,33 @@ fn safety_buffering_notification(
 }
 
 #[tokio::test]
-async fn safety_buffering_offers_one_retry_with_app_wording() {
-    let (mut chat, mut rx, mut op_rx) = make_chatwidget_manual(/*model_override*/ None).await;
+async fn safety_buffering_keeps_the_composer_available_while_waiting() {
+    let (mut chat, _rx, mut op_rx) = make_chatwidget_manual(/*model_override*/ None).await;
     let (thread_id, turn_id, _) = start_safety_buffering_test_turn(&mut chat, &mut op_rx);
+    let model = chat.current_model().to_string();
+    chat.bottom_pane
+        .set_composer_text("draft".to_string(), Vec::new(), Vec::new());
 
     let notification = safety_buffering_notification(thread_id, turn_id, Some("faster-model"));
-    chat.handle_server_notification(
-        ServerNotification::ModelSafetyBufferingUpdated(notification.clone()),
-        /*replay_kind*/ None,
-    );
-    chat.handle_server_notification(
-        ServerNotification::ModelSafetyBufferingUpdated(notification),
-        /*replay_kind*/ None,
-    );
+    for _ in 0..2 {
+        chat.handle_server_notification(
+            ServerNotification::ModelSafetyBufferingUpdated(notification.clone()),
+            /*replay_kind*/ None,
+        );
+    }
 
-    let popup = render_bottom_popup(&chat, /*width*/ 80);
-    assert_chatwidget_snapshot!("safety_buffering_retry_prompt", popup);
-
-    chat.handle_key_event(KeyEvent::new(KeyCode::Down, KeyModifiers::NONE));
-    chat.handle_key_event(KeyEvent::new(KeyCode::Down, KeyModifiers::NONE));
-    chat.handle_key_event(KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE));
-    let opened_url = loop {
-        match rx.try_recv() {
-            Ok(AppEvent::OpenUrlInBrowser { url }) => break url,
-            Ok(_) => continue,
-            Err(err) => panic!("expected learn-more URL event: {err}"),
-        }
-    };
-    assert_eq!(opened_url, "https://help.openai.com/en/articles/20001326");
-    assert!(render_bottom_popup(&chat, /*width*/ 80).contains(SAFETY_BUFFERING_HEADER_TEXT));
-
-    chat.handle_key_event(KeyEvent::new(KeyCode::Up, KeyModifiers::NONE));
-    chat.handle_key_event(KeyEvent::new(KeyCode::Up, KeyModifiers::NONE));
-    chat.handle_key_event(KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE));
-    let (event_thread_id, event_turn_id, model, turn, prompt) = loop {
-        match rx.try_recv() {
-            Ok(AppEvent::RetrySafetyBufferedTurn {
-                thread_id,
-                turn_id,
-                model,
-                turn,
-                prompt,
-            }) => break (thread_id, turn_id, model, turn, prompt),
-            Ok(_) => continue,
-            Err(err) => panic!("expected safety-buffering retry event: {err}"),
-        }
-    };
-    assert_eq!(event_thread_id, thread_id);
-    assert_eq!(event_turn_id, turn_id);
-    assert_eq!(model, "faster-model");
-    assert_matches!(turn, Op::UserTurn { .. });
-    assert_eq!(prompt, UserMessage::from("Explain the request"));
-    assert!(
-        !render_bottom_popup(&chat, /*width*/ 80)
-            .contains("Press enter to confirm or esc to go back")
+    assert_eq!(chat.current_model(), model);
+    assert!(chat.bottom_pane.no_modal_or_popup_active());
+    assert_eq!(chat.bottom_pane.composer_text(), "draft");
+    assert!(chat.safety_buffering_is_waiting());
+    assert_chatwidget_snapshot!(
+        "safety_buffering_passive_status",
+        render_bottom_popup(&chat, /*width*/ 80)
     );
 }
 
 #[tokio::test]
-async fn safety_buffering_does_not_offer_retry_in_side_conversation() {
+async fn safety_buffering_shows_passive_status_in_side_conversation() {
     let (mut chat, _rx, mut op_rx) = make_chatwidget_manual(/*model_override*/ None).await;
     chat.set_side_conversation_active(/*active*/ true);
     let (thread_id, turn_id, _) = start_safety_buffering_test_turn(&mut chat, &mut op_rx);

@@ -211,6 +211,10 @@ pub(crate) enum AppEvent {
     },
 
     /// Interrupt, fork, and retry a safety-buffered turn with the server-selected model.
+    #[expect(
+        dead_code,
+        reason = "The fork retains upstream retry handling but hides its UI action."
+    )]
     RetrySafetyBufferedTurn {
         thread_id: ThreadId,
         turn_id: String,
