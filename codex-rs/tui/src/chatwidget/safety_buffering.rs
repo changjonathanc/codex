@@ -1,37 +1,16 @@
-//! Safety-buffering status and retry confirmation UI for active turns.
-//! Both views share an ID so response streaming, completion, or buffering updates dismiss either one.
+//! Passive safety-buffering status for active turns.
 
 use super::*;
-use crate::wrapping::word_wrap_lines;
 use codex_app_server_protocol::ModelSafetyBufferingUpdatedNotification;
 
 const SAFETY_BUFFERING_PROMPT_VIEW_ID: &str = "safety-buffering-prompt";
-const SAFETY_BUFFERING_LEARN_MORE_URL: &str = "https://help.openai.com/en/articles/20001326";
 
-const SAFETY_BUFFERING_HEADER: &str = "Giving this request a little extra thought";
-const SAFETY_BUFFERING_MESSAGE_WITH_RETRY: &str = "If you'd rather not wait, retry with a faster model. It may be less capable of handling complex requests.";
-const SAFETY_BUFFERING_FOOTER: &str = "No action is required. Codex will keep waiting, and this menu will close when the response is ready.";
-
-struct SafetyBufferingHeader(Vec<Line<'static>>);
-
-impl Renderable for SafetyBufferingHeader {
-    fn render(&self, area: Rect, buf: &mut Buffer) {
-        Renderable::render(
-            &Paragraph::new(word_wrap_lines(&self.0, usize::from(area.width))),
-            area,
-            buf,
-        );
-    }
-
-    fn desired_height(&self, width: u16) -> u16 {
-        word_wrap_lines(&self.0, usize::from(width)).len() as u16
-    }
-}
+const SAFETY_BUFFERING_HEADER: &str =
+    "Our systems are thinking a bit more about this request before responding.";
 
 #[derive(Debug)]
 struct ActiveSafetyBuffering {
     turn_id: String,
-    last_prompt_had_retry: bool,
     agent_message_started: bool,
 }
 
@@ -109,7 +88,6 @@ impl ChatWidget {
         let ModelSafetyBufferingUpdatedNotification {
             turn_id,
             show_buffering_ui,
-            faster_model,
             ..
         } = notification;
         if matches!(replay_kind, Some(ReplayKind::ResumeInitialMessages))
@@ -138,158 +116,25 @@ impl ChatWidget {
             return;
         }
 
-        let retry_turn = if self.side_conversation_active() {
-            None
-        } else {
-            self.safety_buffering
-                .submitted_turn
-                .as_ref()
-                .filter(|(submitted_turn_id, _)| {
-                    replay_kind.is_none() && submitted_turn_id == &turn_id
-                })
-                .map(|(_, turn)| turn.clone())
-        };
-        let thread_id = self.thread_id;
-        let retry_prompt = self.safety_buffering_prompt.clone();
-        let can_offer_retry = faster_model.is_some()
-            && retry_turn.is_some()
-            && retry_prompt.is_some()
-            && thread_id.is_some();
-        let previous_active = self
+        let agent_message_started = self
             .safety_buffering
             .active
             .as_ref()
-            .filter(|active| active.turn_id == turn_id);
-        let should_show_prompt =
-            previous_active.is_none_or(|active| active.last_prompt_had_retry != can_offer_retry);
+            .filter(|active| active.turn_id == turn_id)
+            .is_some_and(|active| active.agent_message_started);
         self.safety_buffering.active = Some(ActiveSafetyBuffering {
-            turn_id: turn_id.clone(),
-            last_prompt_had_retry: can_offer_retry,
-            agent_message_started: false,
+            turn_id,
+            agent_message_started,
         });
 
-        let status_details = if can_offer_retry {
-            format!("{SAFETY_BUFFERING_HEADER} {SAFETY_BUFFERING_MESSAGE_WITH_RETRY}")
-        } else {
-            SAFETY_BUFFERING_HEADER.to_string()
-        };
+        // Keep the selected model and the current input surface. Buffering is
+        // server-owned; its notification must not ask the user to retry.
         self.bottom_pane.ensure_status_indicator();
         self.set_status(
             "Working".to_string(),
-            Some(status_details),
+            Some(SAFETY_BUFFERING_HEADER.to_string()),
             StatusDetailsCapitalization::Preserve,
             /*details_max_lines*/ 6,
         );
-
-        if !should_show_prompt {
-            return;
-        }
-        self.bottom_pane
-            .dismiss_view_by_id(SAFETY_BUFFERING_PROMPT_VIEW_ID);
-
-        let mut header = vec![Line::from(SAFETY_BUFFERING_HEADER).bold()];
-        if can_offer_retry {
-            header.push(Line::from(SAFETY_BUFFERING_MESSAGE_WITH_RETRY).dim());
-        }
-        let mut items = Vec::new();
-        if let (Some(faster_model), Some(turn), Some(prompt), Some(thread_id)) =
-            (faster_model, retry_turn, retry_prompt, thread_id)
-        {
-            items.push(SelectionItem {
-                name: "Retry with a faster model".to_string(),
-                actions: vec![Box::new(move |tx| {
-                    tx.send(AppEvent::ConfirmSafetyBufferedRetry {
-                        thread_id,
-                        turn_id: turn_id.clone(),
-                        model: faster_model.clone(),
-                        turn: turn.clone(),
-                        prompt: prompt.clone(),
-                    });
-                })],
-                dismiss_on_select: true,
-                ..Default::default()
-            });
-        }
-        items.extend([
-            SelectionItem {
-                name: "Dismiss and keep waiting".to_string(),
-                dismiss_on_select: true,
-                ..Default::default()
-            },
-            SelectionItem {
-                name: "Learn more".to_string(),
-                actions: vec![Box::new(|tx| {
-                    tx.send(AppEvent::OpenUrlInBrowser {
-                        url: SAFETY_BUFFERING_LEARN_MORE_URL.to_string(),
-                    });
-                })],
-                ..Default::default()
-            },
-        ]);
-        self.bottom_pane.show_selection_view(SelectionViewParams {
-            view_id: Some(SAFETY_BUFFERING_PROMPT_VIEW_ID),
-            header: Box::new(SafetyBufferingHeader(header)),
-            footer_note: Some(Line::from(SAFETY_BUFFERING_FOOTER).dim()),
-            footer_hint: Some(Line::default()),
-            items,
-            ..SelectionViewParams::picker()
-        });
-    }
-
-    pub(crate) fn confirm_safety_buffered_retry(
-        &mut self,
-        thread_id: ThreadId,
-        turn_id: String,
-        model: String,
-        turn: AppCommand,
-        prompt: UserMessage,
-    ) {
-        if self.thread_id != Some(thread_id) || !self.can_retry_safety_buffered_turn(&turn_id) {
-            return;
-        }
-
-        let model_name = self
-            .model_catalog
-            .try_list_models()
-            .ok()
-            .and_then(|models| models.into_iter().find(|preset| preset.model == model))
-            .map(|preset| preset.display_name)
-            .unwrap_or_else(|| model.clone());
-        self.bottom_pane
-            .dismiss_view_by_id(SAFETY_BUFFERING_PROMPT_VIEW_ID);
-        self.bottom_pane.show_selection_view(SelectionViewParams {
-            view_id: Some(SAFETY_BUFFERING_PROMPT_VIEW_ID),
-            header: Box::new(SafetyBufferingHeader(vec![
-                    "Stop this attempt and retry?".bold().into(),
-                    Line::default(),
-                    "This will stop the current attempt and retry in a new thread. Any file changes or other actions already taken will remain.".dim().into(),
-                    Line::default(),
-                    format!("Your message will be sent again using {model_name}, which may be less capable on complex tasks.").dim().into(),
-                ])),
-            footer_hint: Some(Line::default()),
-            items: vec![
-                SelectionItem {
-                    name: "Keep waiting".to_string(),
-                    dismiss_on_select: true,
-                    ..Default::default()
-                },
-                SelectionItem {
-                    name: "Stop and retry".to_string(),
-                    actions: vec![Box::new(move |tx| {
-                        tx.send(AppEvent::RetrySafetyBufferedTurn {
-                            thread_id,
-                            turn_id: turn_id.clone(),
-                            model: model.clone(),
-                            turn: turn.clone(),
-                            prompt: prompt.clone(),
-                        });
-                    })],
-                    dismiss_on_select: true,
-                    require_explicit_confirmation: true,
-                    ..Default::default()
-                },
-            ],
-            ..SelectionViewParams::picker()
-        });
     }
 }

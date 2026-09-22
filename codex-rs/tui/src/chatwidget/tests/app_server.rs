@@ -5,7 +5,8 @@ use codex_protocol::error::CodexErr;
 use codex_protocol::error::CodexErrorDetails;
 use pretty_assertions::assert_eq;
 
-const SAFETY_BUFFERING_HEADER_TEXT: &str = "Giving this request a little extra thought";
+const SAFETY_BUFFERING_HEADER_TEXT: &str =
+    "Our systems are thinking a bit more about this request before responding.";
 
 fn thread_settings_for_test(
     model: &str,
@@ -192,167 +193,34 @@ fn safety_buffering_notification(
     }
 }
 
-fn open_safety_buffering_retry_confirmation(
-    chat: &mut ChatWidget,
-    rx: &mut tokio::sync::mpsc::UnboundedReceiver<AppEvent>,
-) {
-    chat.handle_key_event(KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE));
-    loop {
-        match rx.try_recv() {
-            Ok(AppEvent::ConfirmSafetyBufferedRetry {
-                thread_id,
-                turn_id,
-                model,
-                turn,
-                prompt,
-            }) => {
-                chat.confirm_safety_buffered_retry(thread_id, turn_id, model, turn, prompt);
-                break;
-            }
-            Ok(AppEvent::RetrySafetyBufferedTurn { .. }) => {
-                panic!("retry must wait for confirmation");
-            }
-            Ok(_) => continue,
-            Err(err) => panic!("expected safety-buffering confirmation event: {err}"),
-        }
-    }
-    assert!(chat.turn_lifecycle.agent_turn_running);
-    assert!(render_bottom_popup(chat, /*width*/ 80).contains("Stop this attempt and retry?"));
-}
-
 #[tokio::test]
-async fn safety_buffering_offers_one_retry_with_app_wording() {
-    let (mut chat, mut rx, mut op_rx) = make_chatwidget_manual(/*model_override*/ None).await;
-    let mut preset = get_available_model(&chat, "gpt-5.5");
-    preset.model = "faster-model".to_string();
-    preset.display_name = "Faster Model".to_string();
-    chat.model_catalog = Arc::new(ModelCatalog::new(vec![preset]));
+async fn safety_buffering_keeps_the_composer_available_while_waiting() {
+    let (mut chat, _rx, mut op_rx) = make_chatwidget_manual(/*model_override*/ None).await;
     let (thread_id, turn_id, _) = start_safety_buffering_test_turn(&mut chat, &mut op_rx);
+    let model = chat.current_model().to_string();
+    chat.bottom_pane
+        .set_composer_text("draft".to_string(), Vec::new(), Vec::new());
 
     let notification = safety_buffering_notification(thread_id, turn_id, Some("faster-model"));
-    chat.handle_server_notification(
-        ServerNotification::ModelSafetyBufferingUpdated(notification.clone()),
-        /*replay_kind*/ None,
-    );
-    chat.handle_server_notification(
-        ServerNotification::ModelSafetyBufferingUpdated(notification),
-        /*replay_kind*/ None,
-    );
-
-    let popup = render_bottom_popup(&chat, /*width*/ 80);
-    assert_chatwidget_snapshot!("safety_buffering_retry_prompt", popup);
-
-    chat.handle_key_event(KeyEvent::new(KeyCode::Down, KeyModifiers::NONE));
-    chat.handle_key_event(KeyEvent::new(KeyCode::Down, KeyModifiers::NONE));
-    chat.handle_key_event(KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE));
-    let opened_url = loop {
-        match rx.try_recv() {
-            Ok(AppEvent::OpenUrlInBrowser { url }) => break url,
-            Ok(_) => continue,
-            Err(err) => panic!("expected learn-more URL event: {err}"),
-        }
-    };
-    assert_eq!(opened_url, "https://help.openai.com/en/articles/20001326");
-    assert!(render_bottom_popup(&chat, /*width*/ 80).contains(SAFETY_BUFFERING_HEADER_TEXT));
-
-    chat.handle_key_event(KeyEvent::new(KeyCode::Up, KeyModifiers::NONE));
-    chat.handle_key_event(KeyEvent::new(KeyCode::Up, KeyModifiers::NONE));
-    open_safety_buffering_retry_confirmation(&mut chat, &mut rx);
-    assert_chatwidget_snapshot!(
-        "safety_buffering_retry_confirmation",
-        render_bottom_popup(&chat, /*width*/ 80)
-    );
-    assert_chatwidget_snapshot!(
-        "safety_buffering_retry_confirmation_narrow",
-        render_bottom_popup(&chat, /*width*/ 40)
-    );
-    assert!(op_rx.try_recv().is_err());
-    while let Ok(event) = rx.try_recv() {
-        assert!(!matches!(event, AppEvent::RetrySafetyBufferedTurn { .. }));
-    }
-
-    chat.handle_key_event(KeyEvent::new(KeyCode::Down, KeyModifiers::NONE));
-    chat.handle_key_event(KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE));
-    let (event_thread_id, event_turn_id, model, turn, prompt) = loop {
-        match rx.try_recv() {
-            Ok(AppEvent::RetrySafetyBufferedTurn {
-                thread_id,
-                turn_id,
-                model,
-                turn,
-                prompt,
-            }) => break (thread_id, turn_id, model, turn, prompt),
-            Ok(_) => continue,
-            Err(err) => panic!("expected safety-buffering retry event: {err}"),
-        }
-    };
-    assert_eq!(event_thread_id, thread_id);
-    assert_eq!(event_turn_id, turn_id);
-    assert_eq!(model, "faster-model");
-    assert_matches!(turn, Op::UserTurn { .. });
-    assert_eq!(prompt, UserMessage::from("Explain the request"));
-    assert!(
-        !render_bottom_popup(&chat, /*width*/ 80)
-            .contains("Press enter to confirm or esc to go back")
-    );
-}
-
-#[tokio::test]
-async fn safety_buffering_retry_confirmation_can_keep_waiting() {
-    for key in [KeyCode::Enter, KeyCode::Esc] {
-        let (mut chat, mut rx, mut op_rx) = make_chatwidget_manual(/*model_override*/ None).await;
-        let (thread_id, turn_id, _) = start_safety_buffering_test_turn(&mut chat, &mut op_rx);
+    for _ in 0..2 {
         chat.handle_server_notification(
-            ServerNotification::ModelSafetyBufferingUpdated(safety_buffering_notification(
-                thread_id,
-                turn_id,
-                Some("faster-model"),
-            )),
+            ServerNotification::ModelSafetyBufferingUpdated(notification.clone()),
             /*replay_kind*/ None,
         );
-        open_safety_buffering_retry_confirmation(&mut chat, &mut rx);
-
-        chat.handle_key_event(KeyEvent::new(key, KeyModifiers::NONE));
-
-        assert!(!render_bottom_popup(&chat, /*width*/ 80).contains("Stop this attempt and retry?"));
-        assert!(chat.can_retry_safety_buffered_turn(turn_id));
-        assert!(op_rx.try_recv().is_err());
-        while let Ok(event) = rx.try_recv() {
-            assert!(!matches!(event, AppEvent::RetrySafetyBufferedTurn { .. }));
-        }
     }
+
+    assert_eq!(chat.current_model(), model);
+    assert!(chat.bottom_pane.no_modal_or_popup_active());
+    assert_eq!(chat.bottom_pane.composer_text(), "draft");
+    assert!(chat.safety_buffering_is_waiting());
+    assert_chatwidget_snapshot!(
+        "safety_buffering_passive_status",
+        render_bottom_popup(&chat, /*width*/ 80)
+    );
 }
 
 #[tokio::test]
-async fn safety_buffering_retry_confirmation_closes_when_turn_completes() {
-    let (mut chat, mut rx, mut op_rx) = make_chatwidget_manual(/*model_override*/ None).await;
-    let (thread_id, turn_id, turn) = start_safety_buffering_test_turn(&mut chat, &mut op_rx);
-    chat.handle_server_notification(
-        ServerNotification::ModelSafetyBufferingUpdated(safety_buffering_notification(
-            thread_id,
-            turn_id,
-            Some("faster-model"),
-        )),
-        /*replay_kind*/ None,
-    );
-    open_safety_buffering_retry_confirmation(&mut chat, &mut rx);
-
-    handle_turn_completed(&mut chat, turn_id, /*duration_ms*/ None);
-    // A queued request to open the confirmation must not reopen it after completion.
-    chat.confirm_safety_buffered_retry(
-        thread_id,
-        turn_id.to_string(),
-        "faster-model".to_string(),
-        turn,
-        UserMessage::from("Explain the request"),
-    );
-
-    assert!(!render_bottom_popup(&chat, /*width*/ 80).contains("Stop this attempt and retry?"));
-    assert!(!chat.can_retry_safety_buffered_turn(turn_id));
-}
-
-#[tokio::test]
-async fn safety_buffering_does_not_offer_retry_in_side_conversation() {
+async fn safety_buffering_shows_passive_status_in_side_conversation() {
     let (mut chat, _rx, mut op_rx) = make_chatwidget_manual(/*model_override*/ None).await;
     chat.set_side_conversation_active(/*active*/ true);
     let (thread_id, turn_id, _) = start_safety_buffering_test_turn(&mut chat, &mut op_rx);
@@ -371,8 +239,8 @@ async fn safety_buffering_does_not_offer_retry_in_side_conversation() {
 }
 
 #[tokio::test]
-async fn safety_buffering_retry_confirmation_closes_when_response_starts() {
-    let (mut chat, mut rx, mut op_rx) = make_chatwidget_manual(/*model_override*/ None).await;
+async fn safety_buffering_status_closes_when_response_starts() {
+    let (mut chat, _rx, mut op_rx) = make_chatwidget_manual(/*model_override*/ None).await;
     let (thread_id, turn_id, _) = start_safety_buffering_test_turn(&mut chat, &mut op_rx);
     chat.handle_server_notification(
         ServerNotification::ModelSafetyBufferingUpdated(safety_buffering_notification(
@@ -383,7 +251,7 @@ async fn safety_buffering_retry_confirmation_closes_when_response_starts() {
         /*replay_kind*/ None,
     );
     assert!(chat.can_retry_safety_buffered_turn(turn_id));
-    open_safety_buffering_retry_confirmation(&mut chat, &mut rx);
+    assert!(render_bottom_popup(&chat, /*width*/ 80).contains(SAFETY_BUFFERING_HEADER_TEXT));
 
     chat.on_agent_message_delta("Visible response".to_string());
 
@@ -455,7 +323,7 @@ async fn safety_buffering_without_retry_shows_short_app_message() {
 
 #[tokio::test]
 async fn safety_buffering_ignores_hidden_stale_and_historical_updates() {
-    let (mut chat, mut rx, mut op_rx) = make_chatwidget_manual(/*model_override*/ None).await;
+    let (mut chat, _rx, mut op_rx) = make_chatwidget_manual(/*model_override*/ None).await;
     let (thread_id, turn_id, _) = start_safety_buffering_test_turn(&mut chat, &mut op_rx);
 
     let mut hidden = safety_buffering_notification(thread_id, turn_id, Some("faster-model"));
@@ -488,7 +356,6 @@ async fn safety_buffering_ignores_hidden_stale_and_historical_updates() {
         /*replay_kind*/ None,
     );
     assert!(render_bottom_popup(&chat, /*width*/ 80).contains(SAFETY_BUFFERING_HEADER_TEXT));
-    open_safety_buffering_retry_confirmation(&mut chat, &mut rx);
     hidden.show_buffering_ui = false;
     chat.handle_server_notification(
         ServerNotification::ModelSafetyBufferingUpdated(hidden),

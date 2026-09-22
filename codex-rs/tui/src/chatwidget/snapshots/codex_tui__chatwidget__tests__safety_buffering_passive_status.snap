@@ -1,12 +1,12 @@
 ---
 source: tui/src/chatwidget/tests/app_server.rs
-assertion_line: 155
-expression: popup
+assertion_line: 133
+expression: "render_bottom_popup(&chat, 80)"
 ---
 • Working (0s • esc to interrupt)
   └ Our systems are thinking a bit more about this request before responding.
 
 
-› Check recently modified functions for compatibility
+› draft
 
-  gpt-5.6-sol default · /tmp/project
+  tab to queue message                                       100% context left

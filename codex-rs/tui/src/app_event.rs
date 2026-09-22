@@ -379,15 +379,6 @@ pub(crate) enum AppEvent {
         op: AppCommand,
     },
 
-    /// Confirm retrying a safety-buffered turn with the server-selected model.
-    ConfirmSafetyBufferedRetry {
-        thread_id: ThreadId,
-        turn_id: String,
-        model: String,
-        turn: AppCommand,
-        prompt: UserMessage,
-    },
-
     /// Sign the challenge associated with an approved elicitation.
     UserVerificationApproved {
         thread_id: ThreadId,
@@ -404,6 +395,10 @@ pub(crate) enum AppEvent {
     },
 
     /// Interrupt, fork, and retry a safety-buffered turn with the server-selected model.
+    #[expect(
+        dead_code,
+        reason = "The fork retains upstream retry handling but hides its UI action."
+    )]
     RetrySafetyBufferedTurn {
         thread_id: ThreadId,
         turn_id: String,
