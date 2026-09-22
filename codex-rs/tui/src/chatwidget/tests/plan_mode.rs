@@ -464,6 +464,56 @@ async fn advanced_reasoning_selection_in_plan_mode_uses_expected_scope() {
 }
 
 #[tokio::test]
+async fn plan_reasoning_shortcuts_step_through_max_and_ultra() {
+    let (mut chat, mut rx, _op_rx) = make_chatwidget_manual(Some("gpt-5.4")).await;
+    chat.thread_id = Some(ThreadId::new());
+    let mut preset = get_available_model(&chat, "gpt-5.4");
+    preset.supported_reasoning_efforts.extend([
+        ReasoningEffortPreset {
+            effort: ReasoningEffortConfig::Max,
+            description: "Maximum reasoning".to_string(),
+        },
+        ReasoningEffortPreset {
+            effort: ReasoningEffortConfig::Ultra,
+            description: "Ultra reasoning".to_string(),
+        },
+    ]);
+    chat.model_catalog = std::sync::Arc::new(ModelCatalog::new(vec![preset]));
+    chat.set_feature_enabled(Feature::CollaborationModes, /*enabled*/ true);
+    let plan_mask = collaboration_modes::plan_mask(chat.model_catalog.as_ref())
+        .expect("plan collaboration mode");
+    chat.set_collaboration_mask(plan_mask);
+    for (current, key, expected) in [
+        (
+            ReasoningEffortConfig::XHigh,
+            KeyCode::Up,
+            ReasoningEffortConfig::Max,
+        ),
+        (
+            ReasoningEffortConfig::Max,
+            KeyCode::Up,
+            ReasoningEffortConfig::Ultra,
+        ),
+        (
+            ReasoningEffortConfig::Ultra,
+            KeyCode::Down,
+            ReasoningEffortConfig::Max,
+        ),
+    ] {
+        chat.set_plan_mode_reasoning_effort(Some(current));
+        while rx.try_recv().is_ok() {}
+        chat.handle_key_event(KeyEvent::new(key, KeyModifiers::SHIFT));
+        let efforts = std::iter::from_fn(|| rx.try_recv().ok())
+            .filter_map(|event| match event {
+                AppEvent::UpdatePlanModeReasoningEffort(effort) => Some(effort),
+                _ => None,
+            })
+            .collect::<Vec<_>>();
+        assert_eq!(efforts, vec![Some(expected)]);
+    }
+}
+
+#[tokio::test]
 async fn plan_mode_reasoning_override_is_marked_current_in_reasoning_popup() {
     let (mut chat, _rx, _op_rx) = make_chatwidget_manual(Some("gpt-5.4")).await;
     chat.set_feature_enabled(Feature::CollaborationModes, /*enabled*/ true);
