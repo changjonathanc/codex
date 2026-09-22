@@ -124,7 +124,7 @@ async fn replayed_failed_turns_preserve_overload_warnings_between_retries() {
 }
 
 #[tokio::test]
-async fn restored_conversation_ultra_remains_selected_after_switching_to_plan() {
+async fn restored_ultra_preserves_the_separate_plan_effort() {
     let (mut chat, _rx, _ops) = make_chatwidget_manual(Some("gpt-5.4")).await;
     chat.set_feature_enabled(Feature::CollaborationModes, /*enabled*/ true);
     chat.set_plan_mode_reasoning_effort(Some(ReasoningEffortConfig::High));
@@ -151,9 +151,18 @@ async fn restored_conversation_ultra_remains_selected_after_switching_to_plan() 
         network_proxy: None,
         rollout_path: None,
     });
+    assert_eq!(
+        chat.current_reasoning_effort(),
+        Some(ReasoningEffortConfig::Ultra)
+    );
     chat.handle_key_event(KeyEvent::from(KeyCode::BackTab));
 
     assert_eq!(chat.active_collaboration_mode_kind(), ModeKind::Plan);
+    assert_eq!(
+        chat.current_reasoning_effort(),
+        Some(ReasoningEffortConfig::High)
+    );
+    chat.handle_key_event(KeyEvent::from(KeyCode::BackTab));
     assert_eq!(
         chat.current_reasoning_effort(),
         Some(ReasoningEffortConfig::Ultra)

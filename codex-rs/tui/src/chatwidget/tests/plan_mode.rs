@@ -449,33 +449,17 @@ async fn advanced_reasoning_selection_in_plan_mode_uses_expected_scope() {
             effort: effort.clone(),
             description: "Advanced reasoning".to_string(),
         }];
-        chat.open_advanced_reasoning_popup(preset);
+        chat.open_reasoning_popup(preset);
         chat.handle_key_event(KeyEvent::from(KeyCode::Enter));
 
         let events = std::iter::from_fn(|| rx.try_recv().ok()).collect::<Vec<_>>();
-        if effort == ReasoningEffortConfig::Ultra {
-            assert!(events.iter().any(|event| matches!(
-                event,
-                AppEvent::ApplyAdvancedReasoning {
-                    model,
-                    effort: ReasoningEffortConfig::Ultra,
-                } if model == "gpt-5.4"
-            )));
-            assert!(events.iter().all(|event| !matches!(
-                event,
-                AppEvent::OpenPlanReasoningScopePrompt { .. }
-                    | AppEvent::PersistPlanModeReasoningEffort(_)
-                    | AppEvent::PersistModelSelection { .. }
-            )));
-        } else {
-            assert!(events.iter().any(|event| matches!(
-                event,
-                AppEvent::OpenPlanReasoningScopePrompt {
-                    model,
-                    effort: Some(ReasoningEffortConfig::Max),
-                } if model == "gpt-5.4"
-            )));
-        }
+        assert!(events.iter().any(|event| matches!(
+            event,
+            AppEvent::OpenPlanReasoningScopePrompt {
+                model,
+                effort: Some(selected),
+            } if model == "gpt-5.4" && selected == &effort
+        )));
     }
 }
 

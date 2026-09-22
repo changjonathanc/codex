@@ -1,15 +1,15 @@
 ---
 source: tui/src/chatwidget/tests/popups_and_settings.rs
-assertion_line: 3235
+assertion_line: 3257
 expression: popup
 ---
   Select Reasoning Level for gpt-5.4
 
   1. Low               Fast responses with lighter reasoning
   2. Medium (default)  Balances speed and reasoning depth for everyday tasks
-› 3. High (current)    Greater reasoning depth for complex problems
+  3. High              Greater reasoning depth for complex problems
   4. Extra high        Extra high reasoning depth for complex problems
   5. Max               Maximum available reasoning
-  6. Ultra             Ultra reasoning
+› 6. Ultra (current)   Ultra reasoning
 
   Press enter to confirm or esc to go back

@@ -7340,43 +7340,20 @@ async fn changing_cyber_model_reasoning_preserves_selected_permissions() {
 
         let mut tui = crate::tui::test_support::make_test_tui().expect("test tui");
         for effort in [ReasoningEffortConfig::High, ReasoningEffortConfig::Ultra] {
-            if effort == ReasoningEffortConfig::Ultra {
-                app.chat_widget
-                    .set_feature_enabled(Feature::CollaborationModes, /*enabled*/ true);
-                app.chat_widget
-                    .set_collaboration_mask(CollaborationModeMask {
-                        name: "Plan".to_string(),
-                        mode: Some(ModeKind::Plan),
-                        model: Some(model_name.clone()),
-                        reasoning_effort: Some(Some(effort.clone())),
-                        developer_instructions: None,
-                    });
-                app.handle_event(
-                    &mut tui,
-                    &mut app_server,
-                    AppEvent::ApplyAdvancedReasoning {
-                        model: model_name.clone(),
-                        effort: effort.clone(),
-                    },
-                )
-                .await
-                .expect("advanced reasoning selection should succeed");
-            } else {
-                app.handle_event(
-                    &mut tui,
-                    &mut app_server,
-                    AppEvent::UpdateModel(model_name.clone()),
-                )
-                .await
-                .expect("same-model selection should succeed");
-                app.handle_event(
-                    &mut tui,
-                    &mut app_server,
-                    AppEvent::UpdateReasoningEffort(Some(effort.clone())),
-                )
-                .await
-                .expect("reasoning selection should succeed");
-            }
+            app.handle_event(
+                &mut tui,
+                &mut app_server,
+                AppEvent::UpdateModel(model_name.clone()),
+            )
+            .await
+            .expect("same-model selection should succeed");
+            app.handle_event(
+                &mut tui,
+                &mut app_server,
+                AppEvent::UpdateReasoningEffort(Some(effort.clone())),
+            )
+            .await
+            .expect("reasoning selection should succeed");
 
             let settings = next_thread_settings_updated(&mut app_server, thread_id)
                 .await
