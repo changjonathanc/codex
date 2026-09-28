@@ -145,6 +145,7 @@ fn command_preview_matches_streamed_and_completed_output() {
         vec!["bash".into(), "-lc".into(), "echo output".into()],
         Vec::new(),
         CommandExecutionSource::Agent,
+        /*timeout*/ None,
         /*interaction_input*/ None,
         /*animations_enabled*/ false,
     );

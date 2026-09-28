@@ -227,7 +227,11 @@ impl ExecCell {
     }
 
     pub(crate) fn first_start_time(&self) -> Option<Instant> {
-        self.group.calls.iter().filter_map(|call| call.start_time).min()
+        self.group
+            .calls
+            .iter()
+            .filter_map(|call| call.start_time)
+            .min()
     }
 
     /// Returns first-start-to-last-finish time for a completed parallel group.
@@ -236,12 +240,18 @@ impl ExecCell {
             return None;
         }
 
-        let longest_call = self.group.calls.iter().filter_map(|call| call.duration).max()?;
+        let longest_call = self
+            .group
+            .calls
+            .iter()
+            .filter_map(|call| call.duration)
+            .max()?;
         let Some(first_start) = self.first_start_time() else {
             return Some(longest_call);
         };
         let measured_span = self
-            .group.calls
+            .group
+            .calls
             .iter()
             .filter_map(|call| {
                 Some(call.start_time?.saturating_duration_since(first_start) + call.duration?)
@@ -300,7 +310,8 @@ impl ExecCell {
     fn can_group_parallel_call(&self, call: &ExecCall) -> bool {
         matches!(call.source, ExecCommandSource::Agent)
             && self
-                .group.calls
+                .group
+                .calls
                 .iter()
                 .all(|existing| matches!(existing.source, ExecCommandSource::Agent))
     }

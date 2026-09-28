@@ -23,6 +23,7 @@ fn completed_read(name: &str, output: &str) -> ExecCell {
             output: Some(CommandOutput::new(/*exit_code*/ 0, output.to_owned())),
             source: CommandExecutionSource::UnifiedExecStartup,
             start_time: None,
+            timeout: None,
             duration: Some(Duration::from_millis(/*millis*/ 5)),
             interaction_input: None,
         },

@@ -175,6 +175,7 @@ impl CommandHistory {
             self.command,
             self.parsed,
             self.source,
+            /*timeout*/ None,
             /*interaction_input*/ None,
             /*animations_enabled*/ false,
         );
