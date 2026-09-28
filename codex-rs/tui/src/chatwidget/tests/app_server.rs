@@ -1281,6 +1281,8 @@ async fn live_app_server_running_command_displays_timeout() {
             turn_id: "turn-1".to_string(),
             started_at_ms: 0,
             item: AppServerThreadItem::CommandExecution {
+                model_context: None,
+                sandbox_type: None,
                 id: "cmd-timeout".to_string(),
                 command,
                 cwd: test_path_buf("/tmp").abs().into(),

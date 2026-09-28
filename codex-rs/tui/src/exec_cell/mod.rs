@@ -1,6 +1,7 @@
 mod compact;
 mod live_output;
 mod model;
+mod parallel;
 mod render;
 mod transcript;
 

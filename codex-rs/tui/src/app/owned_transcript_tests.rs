@@ -1295,6 +1295,7 @@ async fn find_refreshes_live_details_before_searching_the_first_query() -> Resul
             vec!["printf visible\nprintf needle".into()],
             Vec::new(),
             codex_app_server_protocol::CommandExecutionSource::Agent,
+            /*timeout*/ None,
             /*interaction_input*/ None,
             /*animations_enabled*/ false,
         )),

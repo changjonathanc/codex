@@ -414,6 +414,7 @@ fn tool_selection_copies_its_displayed_revision_after_the_tool_commits() {
             )),
             source: CommandExecutionSource::Agent,
             start_time: None,
+            timeout: None,
             duration: None,
             interaction_input: None,
         },

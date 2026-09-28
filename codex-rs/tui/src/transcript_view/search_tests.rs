@@ -638,6 +638,7 @@ fn find_reveals_hidden_command_output_and_restores_compact_presentation() {
             )),
             source: codex_app_server_protocol::CommandExecutionSource::Agent,
             start_time: None,
+            timeout: None,
             duration: None,
             interaction_input: None,
         },
