@@ -9820,6 +9820,13 @@ class CommandExecutionThreadItem(BaseModel):
     ] = None
     source: CommandExecutionSource | None = "agent"
     status: CommandExecutionStatus
+    timeout_ms: Annotated[
+        int | None,
+        Field(
+            alias="timeoutMs",
+            description="The command's configured execution timeout in milliseconds, when it has a hard deadline.",
+        ),
+    ] = None
     type: Annotated[Literal["commandExecution"], Field(title="CommandExecutionThreadItemType")]
 
 

@@ -1660,7 +1660,11 @@ impl TurnItemIndex {
         items.push(item);
     }
 
-    fn upsert<'a>(&mut self, items: &'a mut Vec<ThreadItem>, mut item: ThreadItem) -> &'a ThreadItem {
+    fn upsert<'a>(
+        &mut self,
+        items: &'a mut Vec<ThreadItem>,
+        mut item: ThreadItem,
+    ) -> &'a ThreadItem {
         if self.positions.is_none() && items.len() >= TURN_ITEM_INDEX_THRESHOLD {
             let mut positions = HashMap::with_capacity(items.len());
             for (index, existing) in items.iter().enumerate() {
@@ -1675,7 +1679,10 @@ impl TurnItemIndex {
         };
         if let Some(index) = existing_index {
             if let (
-                ThreadItem::CommandExecution { timeout_ms: existing_timeout_ms, .. },
+                ThreadItem::CommandExecution {
+                    timeout_ms: existing_timeout_ms,
+                    ..
+                },
                 ThreadItem::CommandExecution { timeout_ms, .. },
             ) = (&items[index], &mut item)
                 && timeout_ms.is_none()
