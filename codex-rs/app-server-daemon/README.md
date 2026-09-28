@@ -101,6 +101,12 @@ pidfile-backed detached process. It launches a detached updater loop when
 automatic updates are enabled, the installer selected the stable `latest`
 channel, and the managed binary supports the updater command.
 
+A fork build uses the package selected by the fork installation workflow. A
+version with a `fork` prerelease identifier does not fetch or run the official
+installer. Its updater checks the managed package every 30 seconds. If the
+package changes, it restarts a running app-server with the new binary and then
+replaces the updater. It does not start an app-server that the user stopped.
+
 ## Installation and update cases
 
 New daemons use `CODEX_HOME/packages/app-server-daemon/current/bin/codex`
@@ -118,6 +124,7 @@ The old CLI package files and selection remain unchanged.
 | --- | --- | --- | --- |
 | Latest-channel installer has run; `start` or `bootstrap` is used with automatic updates enabled | Managed binary and detached updater when supported | When supported, the platform's installer runs on the configured cadence. | When supported, the running server restarts with the new binary before the updater replaces itself. |
 | Installer selected an explicit release; `bootstrap` is used | Managed binary only | No; the selected release stays pinned. | No; an explicit restart uses the selected binary. |
+| A fork installation workflow changes the managed package | The selected fork binary and detached updater | No; the fork workflow supplies the package. | The updater checks every 30 seconds, restarts a running server, and then replaces itself. |
 | Another tool updates the managed binary | A fresh start or explicit restart uses it; a running server is reused. | Yes, when a latest-channel updater is running, on the configured cadence. | An updater that was running through the change compares binary contents on its next successful installer pass and refreshes the server first. |
 
 ### Managed packages

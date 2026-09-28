@@ -1,3 +1,4 @@
+use std::path::Path;
 use std::sync::Mutex;
 #[cfg(unix)]
 use std::time::Duration;
@@ -9,6 +10,7 @@ use tempfile::TempDir;
 use super::INSTALL_URL;
 use super::InstallerHttp;
 use super::InstallerResponse;
+use super::UpdateSource;
 use super::fetch_installer_script;
 #[cfg(unix)]
 use super::manual_update::run as manual_update_once;
@@ -23,6 +25,47 @@ use crate::managed_install::executable_identity;
 #[cfg(unix)]
 use crate::managed_install::executable_identity_from_reader;
 
+#[test]
+fn fork_prerelease_versions_use_external_packages() {
+    assert_eq!(
+        [
+            "0.158.0-fork.1",
+            "0.158.0-fork.2",
+            "0.158.0-fork.12+build.42",
+            "0.158.0-fork",
+        ]
+        .map(UpdateSource::for_version),
+        [UpdateSource::ExternalPackage; 4]
+    );
+}
+
+#[test]
+fn other_versions_keep_the_official_installer() {
+    assert_eq!(
+        [
+            "0.158.0",
+            "0.159.0-alpha.1",
+            "0.159.0-forked.1",
+            "0.159.0+build-fork.2",
+            "0.159.0-alpha.1+fork.2",
+        ]
+        .map(UpdateSource::for_version),
+        [UpdateSource::OfficialInstaller; 5]
+    );
+}
+
+#[test]
+fn missing_fork_install_explains_how_to_repair_the_managed_link() {
+    assert_eq!(
+        UpdateSource::ExternalPackage
+            .missing_install_error(Path::new("/codex/packages/standalone/current/bin/codex"))
+            .to_string(),
+        "daemon executable not found at /codex/packages/standalone/current/bin/codex\n\n\
+         repair the existing installation with the fork installation workflow. It must \
+         create or repair the managed package link. Then rerun this command."
+    );
+}
+
 #[tokio::test]
 async fn installer_fetch_uses_exact_url_and_preserves_bytes() {
     let script = b"#!/bin/sh\nprintf 'update bytes'\n".to_vec();
@@ -35,6 +78,32 @@ async fn installer_fetch_uses_exact_url_and_preserves_bytes() {
         script
     );
     assert_eq!(http.requested_urls(), vec![INSTALL_URL.to_string()]);
+}
+
+#[cfg(unix)]
+#[tokio::test]
+async fn external_package_check_does_not_fetch_the_official_installer() {
+    let home = TempDir::new().expect("home");
+    let (daemon, _) = manual_update_daemon(&home);
+    let identity = executable_identity(&daemon.managed_codex_bin)
+        .await
+        .expect("updater identity");
+    let http = FakeInstallerHttp::new(InstallerResponse::Success(b"exit 17\n".to_vec()));
+
+    let (control, restart) = super::update_once(
+        UpdateSource::ExternalPackage,
+        &http,
+        &daemon,
+        &identity,
+        &mut test_terminate(),
+        super::UpdateTrigger::Scheduled,
+    )
+    .await
+    .expect("external package check");
+
+    assert!(matches!(control, super::UpdateLoopControl::Continue));
+    assert_eq!(restart, None);
+    assert_eq!(http.requested_urls(), Vec::<String>::new());
 }
 
 #[tokio::test]
@@ -74,6 +143,7 @@ async fn explicit_update_migrates_running_and_stopped_installations() {
         b"# CODEX_INSTALL_IF_LATEST\ntest \"$CODEX_INSTALL_DEFER_SELECTION\" = 0 && test \"$CODEX_INSTALL_DAEMON_ONLY\" = 0\n".to_vec(),
     ));
         super::update_once(
+            UpdateSource::OfficialInstaller,
             &scheduled,
             &legacy,
             &executable_identity(&legacy.managed_codex_bin)
@@ -431,6 +501,7 @@ async fn unsupported_request_preserves_updater_schedule() {
             &http,
             &updater_daemon,
             &identity,
+            UpdateSource::OfficialInstaller,
             /*restore_release*/ None,
         )
         .await
@@ -774,6 +845,7 @@ async fn check_manual_update_restart(package_directory: &str) {
             &http,
             &updater_daemon,
             &executable_identity_from_reader(&b"updater"[..]).expect("updater identity"),
+            UpdateSource::OfficialInstaller,
             restore_release,
         )
         .await
