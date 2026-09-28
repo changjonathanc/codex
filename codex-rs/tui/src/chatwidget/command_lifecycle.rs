@@ -396,6 +396,7 @@ impl ChatWidget {
                 command.clone(),
                 parsed.clone(),
                 source,
+                timeout,
                 /*interaction_input*/ None,
             );
         }

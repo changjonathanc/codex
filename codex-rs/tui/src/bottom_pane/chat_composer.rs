@@ -4957,7 +4957,7 @@ mod tests {
     use tokio::sync::mpsc::UnboundedReceiver;
     use tokio::sync::mpsc::unbounded_channel;
 
-    fn new_test_composer() -> (ChatComposer, UnboundedReceiver<AppEvent>) {
+    pub(super) fn new_test_composer() -> (ChatComposer, UnboundedReceiver<AppEvent>) {
         let (tx, rx) = unbounded_channel::<AppEvent>();
         let sender = AppEventSender::new(tx);
         (
@@ -5136,7 +5136,7 @@ mod tests {
         );
     }
 
-    fn snapshot_composer_state_with_width<F>(
+    pub(super) fn snapshot_composer_state_with_width<F>(
         name: &str,
         width: u16,
         enhanced_keys_supported: bool,

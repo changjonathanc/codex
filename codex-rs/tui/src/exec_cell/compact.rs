@@ -11,6 +11,7 @@ use crate::motion::activity_indicator;
 use crate::render::highlight::highlight_bash_to_lines;
 use crate::terminal_hyperlinks::HyperlinkLine;
 use codex_ansi_escape::ansi_escape_line;
+use codex_utils_elapsed::format_duration;
 use ratatui::style::Modifier;
 use ratatui::style::Stylize;
 use ratatui::text::Line;
@@ -83,9 +84,20 @@ impl ExecCell {
         // Highlight before clipping so the compact row keeps the same shell token colors.
         let mut command_lines = highlight_bash_to_lines(&script).into_iter();
         let mut header = command_lines.next().unwrap_or_default();
-        header
-            .spans
-            .splice(0..0, [marker, " ".into(), title.bold(), " ".into()]);
+        let mut prefix = vec![marker, " ".into(), title.bold()];
+        if !call.is_unified_exec_interaction() {
+            let timing = if self.is_active() {
+                call.timeout
+                    .map(|timeout| format!("timeout {}", format_duration(timeout)))
+            } else {
+                call.duration.map(format_duration)
+            };
+            if let Some(timing) = timing {
+                prefix.extend([" (".dim(), timing.dim(), ")".dim()]);
+            }
+        }
+        prefix.push(" ".into());
+        header.spans.splice(0..0, prefix);
         if command_lines.next().is_some() {
             header.push_span(" …");
         }

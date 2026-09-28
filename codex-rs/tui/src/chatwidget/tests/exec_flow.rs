@@ -74,7 +74,7 @@ async fn replayed_command_completion_preserves_tracking_without_duplicate_starts
         .collect::<Vec<_>>();
     assert_eq!(
         history,
-        vec!["• Ran cat replay\n  └ (no output)\n".to_string()]
+        vec!["• Ran (0ms) cat replay\n  └ (no output)\n".to_string()]
     );
 }
 
@@ -239,6 +239,7 @@ async fn adjacent_exploration_groups_across_reasoning_live_and_replayed() {
         ] {
             let command = vec!["bash".to_string(), "-lc".to_string(), script.to_string()];
             let mut item = AppServerThreadItem::CommandExecution {
+                timeout_ms: None,
                 model_context: None,
                 sandbox_type: None,
                 id: id.to_string(),
@@ -334,6 +335,7 @@ async fn replayed_commands_preserve_individual_output_and_failure_status() {
     let cwd = chat.config.cwd.clone();
     let replayed_command =
         |id: &str, output: &str, source: ExecCommandSource| AppServerThreadItem::CommandExecution {
+            timeout_ms: None,
             model_context: None,
             sandbox_type: None,
             id: id.to_string(),
@@ -949,10 +951,15 @@ async fn overlapping_agent_commands_render_as_one_parallel_group() {
         .as_mut()
         .and_then(|cell| cell.as_any_mut().downcast_mut::<ExecCell>())
         .expect("active parallel exec cell");
-    assert_eq!(cell.calls.len(), 4);
-    for call in &mut cell.calls {
+    cell.freeze_snapshot();
+    assert_eq!(cell.group.calls.len(), 4);
+    for call in &mut cell.group.calls {
         call.start_time = Some(common_start);
     }
+    assert_eq!(
+        crate::terminal_hyperlinks::visible_lines(cell.compact_hyperlink_lines(/*width*/ 80)),
+        cell.display_lines(/*width*/ 80),
+    );
     assert_chatwidget_snapshot!("parallel_exec_all_running", active_blob(&chat));
 
     end_exec(

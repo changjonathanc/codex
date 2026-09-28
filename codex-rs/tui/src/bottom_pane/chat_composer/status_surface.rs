@@ -34,15 +34,6 @@ impl ChatComposer {
             .map_or(/*default*/ 0, |line| line.width() as u16);
         let width = max_left_width_for_right(area, right_width)
             .unwrap_or_else(|| inset_footer_hint_area(area).width);
-        let transition = self
-            .effort_status_line_transition
-            .as_ref()
-            .filter(|transition| !transition.is_finished());
-        let line = if let Some(transition) = transition {
-            transition.render_line(line.as_ref(), width)
-        } else {
-            line
-        };
         if let Some(line) = line {
             render_footer_line(
                 area,
@@ -55,11 +46,6 @@ impl ChatComposer {
         }
         if let Some(url) = self.footer.status_line_hyperlink_url.as_deref() {
             mark_underlined_hyperlink(buf, area, url);
-        }
-        if transition.is_some()
-            && let Some(frame_requester) = &self.frame_requester
-        {
-            frame_requester.schedule_frame_in(EFFORT_STATUS_LINE_FRAME_TICK);
         }
     }
 }

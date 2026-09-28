@@ -1,8 +1,8 @@
 ---
 source: tui/src/chatwidget/tests/completion_styling_tests.rs
-expression: normalize_completion_timestamps(& (text))
+expression: text
 ---
-• Ran echo ready
+• Ran (5ms) echo ready
   └ ready
 
 • The change is ready.
