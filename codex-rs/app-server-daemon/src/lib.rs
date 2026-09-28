@@ -956,10 +956,10 @@ impl Daemon {
             return Ok(());
         }
 
-        let managed_codex_path = self.managed_codex_bin.display();
-        Err(anyhow!(
-            "daemon executable not found at {managed_codex_path}; repair the existing installation, or run `codex app-server daemon start` to install a missing daemon"
-        ))
+        Err(
+            update_loop::UpdateSource::for_version(env!("CARGO_PKG_VERSION"))
+                .missing_install_error(&self.managed_codex_bin),
+        )
     }
 
     #[cfg(any(unix, windows))]

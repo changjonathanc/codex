@@ -40,6 +40,10 @@ use crate::settings::UpdaterSettings;
 mod manual_update;
 #[path = "migration.rs"]
 mod migration;
+#[path = "update_source.rs"]
+mod update_source;
+
+pub(crate) use update_source::UpdateSource;
 
 pub(crate) async fn request_manual_update(
     daemon: &Daemon,
@@ -61,6 +65,7 @@ pub(crate) async fn request_manual_update(
 }
 
 const INITIAL_UPDATE_DELAY: Duration = Duration::from_secs(5 * 60);
+const EXTERNAL_UPDATE_INTERVAL: Duration = Duration::from_secs(30);
 const RESTART_RETRY_INTERVAL: Duration = Duration::from_millis(50);
 #[cfg(unix)]
 const INSTALL_URL: &str = "https://chatgpt.com/codex/install.sh";
@@ -79,6 +84,7 @@ pub(crate) async fn run(
         &http,
         &Daemon::from_environment()?,
         &current_updater_identity().await?,
+        UpdateSource::for_version(env!("CARGO_PKG_VERSION")),
         restore_release,
     )
     .await
@@ -88,6 +94,7 @@ async fn run_with_http(
     http: &impl InstallerHttp,
     daemon: &Daemon,
     running_updater_identity: &ExecutableIdentity,
+    update_source: UpdateSource,
     mut restore_release: Option<String>,
 ) -> Result<()> {
     #[cfg(unix)]
@@ -143,6 +150,8 @@ async fn run_with_http(
     let mut next_check = Instant::now()
         + if restore_release.is_some() || needs_managed_handoff || !auto_update_enabled {
             Duration::from_secs(15)
+        } else if update_source == UpdateSource::ExternalPackage {
+            Duration::ZERO
         } else {
             INITIAL_UPDATE_DELAY
         };
@@ -194,7 +203,9 @@ async fn run_with_http(
                 #[cfg(windows)]
                 updater.wait_for_ownership().await?;
                 if manual_handoff_pending {
-                    if !daemon.is_stable_standalone_release()? {
+                    if update_source == UpdateSource::OfficialInstaller
+                        && !daemon.is_stable_standalone_release()?
+                    {
                         if !daemon.has_latest_selection_marker() {
                             return Ok(());
                         }
@@ -205,7 +216,7 @@ async fn run_with_http(
                         Ok(UpdateLoopControl::Stop) => return Ok(()),
                         Ok(UpdateLoopControl::Continue) => {
                             manual_handoff_pending = false;
-                            let Some(delay) = next_update_delay(daemon).await else {
+                            let Some(delay) = next_update_delay(update_source, daemon).await else {
                                 return Ok(());
                             };
                             next_check = Instant::now() + delay;
@@ -220,7 +231,14 @@ async fn run_with_http(
                     }
                     continue;
                 }
-                match update_once(http, daemon, running_updater_identity, &mut terminate, UpdateTrigger::Scheduled).await {
+                match update_once(
+                    update_source,
+                    http,
+                    daemon,
+                    running_updater_identity,
+                    &mut terminate,
+                    UpdateTrigger::Scheduled,
+                ).await {
                     Ok((UpdateLoopControl::Continue, Some(_))) => {
                         manual_handoff_pending = true;
                         next_check = Instant::now();
@@ -229,7 +247,7 @@ async fn run_with_http(
                     Ok((UpdateLoopControl::Continue, None)) | Err(_) => {}
                     Ok((UpdateLoopControl::Stop, _)) => return Ok(()),
                 }
-                let Some(delay) = next_update_delay(daemon).await else {
+                let Some(delay) = next_update_delay(update_source, daemon).await else {
                     return Ok(());
                 };
                 next_check = Instant::now() + delay;
@@ -238,9 +256,10 @@ async fn run_with_http(
     }
 }
 
-async fn next_update_delay(daemon: &Daemon) -> Option<Duration> {
+async fn next_update_delay(update_source: UpdateSource, daemon: &Daemon) -> Option<Duration> {
     match UpdaterSettings::load(&daemon.settings_file).await {
         Ok(settings) if !settings.auto_update_enabled => None,
+        Ok(_) if update_source == UpdateSource::ExternalPackage => Some(EXTERNAL_UPDATE_INTERVAL),
         Ok(settings) => Some(settings.update_interval(Duration::from_secs(60))),
         Err(_) => Some(Duration::from_secs(60)),
     }
@@ -304,6 +323,7 @@ enum UpdateTrigger<'a> {
 }
 
 async fn update_once(
+    update_source: UpdateSource,
     http: &impl InstallerHttp,
     daemon: &Daemon,
     running_updater_identity: &ExecutableIdentity,
@@ -316,6 +336,9 @@ async fn update_once(
             .auto_update_enabled
     {
         return Ok((UpdateLoopControl::Stop, None));
+    }
+    if update_source == UpdateSource::ExternalPackage {
+        return update_external_package(daemon, running_updater_identity, terminate).await;
     }
     if release_selection_unstable(daemon, trigger)? {
         // An installer can be between changing current and publishing its
@@ -469,6 +492,42 @@ async fn update_once(
                     },
                     None,
                 ));
+            }
+        }
+    }
+}
+
+async fn update_external_package(
+    daemon: &Daemon,
+    running_updater_identity: &ExecutableIdentity,
+    terminate: &mut Signal,
+) -> Result<(UpdateLoopControl, Option<RestartIfRunningOutcome>)> {
+    let managed_codex_bin =
+        resolved_managed_codex_bin(&daemon.current_managed_codex_bin()?).await?;
+    if executable_identity(&managed_codex_bin).await? == *running_updater_identity {
+        return Ok((UpdateLoopControl::Continue, None));
+    }
+
+    loop {
+        if terminate.recv().now_or_never().flatten().is_some() {
+            return Ok((UpdateLoopControl::Stop, None));
+        }
+        match daemon
+            .try_restart_if_running(RestartMode::Always, &managed_codex_bin)
+            .await?
+        {
+            RestartIfRunningOutcome::Busy => {
+                if sleep_or_terminate(RESTART_RETRY_INTERVAL, terminate).await {
+                    return Ok((UpdateLoopControl::Stop, None));
+                }
+            }
+            outcome @ (RestartIfRunningOutcome::Restarted
+            | RestartIfRunningOutcome::NotRunning
+            | RestartIfRunningOutcome::AlreadyCurrent) => {
+                return Ok((UpdateLoopControl::Continue, Some(outcome)));
+            }
+            RestartIfRunningOutcome::NotReady => {
+                return Ok((UpdateLoopControl::Continue, None));
             }
         }
     }
