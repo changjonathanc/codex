@@ -673,25 +673,33 @@ mod tests {
     use tokio::sync::Mutex;
 
     #[tokio::test]
-    async fn shell_begin_emits_configured_timeout() {
+    async fn command_begin_emits_configured_timeout() {
         let (session, turn, rx_event) =
             make_session_and_context_with_dynamic_tools_and_rx(Vec::new()).await;
-        let emitter = ToolEmitter::shell(
-            vec!["echo".to_string(), "done".to_string()],
-            turn.config.cwd.clone(),
-            ExecCommandSource::Agent,
-            Some(1_234),
-            /*plugin_attribution*/ None,
-        );
+        let command = vec!["echo".to_string(), "done".to_string()];
+        let cwd = PathUri::from_host_native_path(turn.config.cwd.as_path()).expect("absolute cwd");
+        let input = ExecCommandInput {
+            command: &command,
+            cwd: &cwd,
+            parsed_cmd: &[],
+            source: ExecCommandSource::Agent,
+            timeout_ms: Some(1_234),
+            interaction_input: None,
+            process_id: None,
+            plugin_attribution: None,
+        };
 
-        emitter
-            .begin(ToolEventCtx::new(
+        emit_exec_command_begin(
+            ToolEventCtx::new(
                 session.as_ref(),
                 turn.as_ref(),
+                turn.model_info(),
                 "call-id",
                 /*turn_diff_tracker*/ None,
-            ))
-            .await;
+            ),
+            &input,
+        )
+        .await;
 
         let started = rx_event.recv().await.expect("item started event");
         assert!(matches!(
