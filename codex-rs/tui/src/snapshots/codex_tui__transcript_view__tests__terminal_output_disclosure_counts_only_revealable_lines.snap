@@ -1,27 +1,28 @@
 ---
 source: tui/src/transcript_view_tests.rs
+assertion_line: 202
 expression: "frames.join(\"\\n\\n\")"
 ---
 three visible
-• Ran echo
+• Ran (1.00s) echo
   └ a
     b
     c
 
 one hidden
-• Ran echo
+• Ran (1.00s) echo
   └ b
     c
     d
     + 1 line (ctrl+t to expand)
 
 clipped line
-• Ran echo
+• Ran (1.00s) echo
   └ abcdefghijklmno…
     + 1 line
 
 command only
-• Ran echo a …
+• Ran (1.00s) echo a …
   └ (no output)
     + Show details
 

@@ -75,6 +75,7 @@ fn terminal_output_disclosure_follows_live_history_and_keymap() {
         vec!["echo".into()],
         Vec::new(),
         CommandExecutionSource::Agent,
+        /*timeout*/ None,
         /*interaction_input*/ None,
         /*animations_enabled*/ false,
     );
@@ -173,6 +174,7 @@ fn terminal_output_disclosure_counts_only_revealable_lines() {
             vec!["sh".into(), "-c".into(), command.into()],
             Vec::new(),
             CommandExecutionSource::Agent,
+            /*timeout*/ None,
             /*interaction_input*/ None,
             /*animations_enabled*/ false,
         );
