@@ -1236,11 +1236,6 @@ pub(crate) enum AppEvent {
         model: ModelPreset,
     },
 
-    /// Open the explicit Max/Ultra reasoning selection popup for a model.
-    OpenAdvancedReasoningPopup {
-        model: ModelPreset,
-    },
-
     /// Apply an advanced reasoning effort to the active conversation without changing defaults.
     ApplyAdvancedReasoning {
         model: String,

@@ -398,7 +398,7 @@ async fn reasoning_shortcut_in_plan_mode_updates_plan_override_without_prompt_or
 }
 
 #[tokio::test]
-async fn advanced_reasoning_selection_in_plan_mode_uses_expected_scope() {
+async fn advanced_reasoning_selection_in_plan_mode_uses_scope_prompt() {
     for effort in [ReasoningEffortConfig::Ultra, ReasoningEffortConfig::Max] {
         let (mut chat, mut rx, _op_rx) = make_chatwidget_manual(Some("gpt-5.5")).await;
         chat.thread_id = Some(ThreadId::new());
@@ -413,41 +413,24 @@ async fn advanced_reasoning_selection_in_plan_mode_uses_expected_scope() {
             effort: effort.clone(),
             description: "Advanced reasoning".to_string(),
         }];
-        chat.open_advanced_reasoning_popup(preset);
-        chat.handle_key_event(KeyEvent::from(KeyCode::Enter));
+        chat.open_reasoning_popup(preset);
 
         let events = std::iter::from_fn(|| rx.try_recv().ok()).collect::<Vec<_>>();
-        if effort == ReasoningEffortConfig::Ultra {
-            assert!(events.iter().any(|event| matches!(
-                event,
-                AppEvent::ApplyAdvancedReasoning {
-                    model,
-                    effort: ReasoningEffortConfig::Ultra,
-                } if model == "gpt-5.5"
-            )));
-            assert!(events.iter().all(|event| !matches!(
-                event,
-                AppEvent::OpenPlanReasoningScopePrompt { .. }
-                    | AppEvent::PersistPlanModeReasoningEffort(_)
-                    | AppEvent::PersistModelSelection { .. }
-            )));
-        } else {
-            assert!(events.iter().any(|event| matches!(
-                event,
-                AppEvent::OpenPlanReasoningScopePrompt {
-                    model,
-                    effort: Some(ReasoningEffortConfig::Max),
-                } if model == "gpt-5.5"
-            )));
-        }
+        assert!(events.iter().any(|event| matches!(
+            event,
+            AppEvent::OpenPlanReasoningScopePrompt {
+                model,
+                effort: Some(selected_effort),
+            } if model == "gpt-5.5" && selected_effort == &effort
+        )));
     }
 }
 
 #[tokio::test]
 async fn plan_reasoning_shortcuts_step_through_max_and_ultra() {
-    let (mut chat, mut rx, _op_rx) = make_chatwidget_manual(Some("gpt-5.4")).await;
+    let (mut chat, mut rx, _op_rx) = make_chatwidget_manual(Some("gpt-5.5")).await;
     chat.thread_id = Some(ThreadId::new());
-    let mut preset = get_available_model(&chat, "gpt-5.4");
+    let mut preset = get_available_model(&chat, "gpt-5.5");
     preset.supported_reasoning_efforts.extend([
         ReasoningEffortPreset {
             effort: ReasoningEffortConfig::Max,
@@ -458,11 +441,11 @@ async fn plan_reasoning_shortcuts_step_through_max_and_ultra() {
             description: "Ultra reasoning".to_string(),
         },
     ]);
-    chat.model_catalog = std::sync::Arc::new(ModelCatalog::new(vec![preset]));
     chat.set_feature_enabled(Feature::CollaborationModes, /*enabled*/ true);
     let plan_mask = collaboration_modes::plan_mask(chat.model_catalog.as_ref())
         .expect("plan collaboration mode");
     chat.set_collaboration_mask(plan_mask);
+    chat.model_catalog = std::sync::Arc::new(ModelCatalog::new(vec![preset]));
     for (current, key, expected) in [
         (
             ReasoningEffortConfig::XHigh,

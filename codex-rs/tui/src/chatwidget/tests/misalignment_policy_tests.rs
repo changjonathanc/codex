@@ -66,7 +66,7 @@ async fn misalignment_policy_failure_stops_the_thread_and_renders_once() {
     );
     assert!(
         render_bottom_popup(&chat, /*width*/ 80)
-            .contains("Giving this request a little extra thought")
+            .contains("Our systems are thinking a bit more about this request before responding.")
     );
     chat.queue_user_message(UserMessage::from("queued follow-up"));
     chat.bottom_pane
