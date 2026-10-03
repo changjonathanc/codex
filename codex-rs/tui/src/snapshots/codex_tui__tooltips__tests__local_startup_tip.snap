@@ -1,0 +1,6 @@
+---
+source: tui/src/tooltips.rs
+assertion_line: 169
+expression: "lines.iter().map(|line| line.line.to_string()).collect::<Vec<_>>().join(\"\\n\")"
+---
+Tip: Use /agents to open the agent command center.
