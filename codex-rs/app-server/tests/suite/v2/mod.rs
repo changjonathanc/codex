@@ -42,6 +42,7 @@ mod connection_handling_websocket;
 mod connection_handling_websocket_compression;
 #[cfg(unix)]
 mod connection_handling_websocket_unix;
+mod cron;
 #[cfg(unix)]
 mod curated_mcp_sync;
 mod current_time;
