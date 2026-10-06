@@ -33,6 +33,7 @@ mod connection_handling_stdio;
 mod connection_handling_websocket;
 #[cfg(unix)]
 mod connection_handling_websocket_unix;
+mod cron;
 #[cfg(unix)]
 mod curated_mcp_sync;
 mod current_time;

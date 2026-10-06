@@ -62,6 +62,7 @@ members = [
     "ext/agent",
     "ext/agent-message-board",
     "ext/connectors",
+    "ext/cron",
     "ext/extension-api",
     "ext/goal",
     "ext/git-attribution",
@@ -221,6 +222,7 @@ codex-exec-server = { path = "exec-server" }
 codex-exec-server-test-support = { path = "exec-server/tests/support" }
 codex-execpolicy = { path = "execpolicy" }
 codex-extension-api = { path = "ext/extension-api" }
+codex-cron-extension = { path = "ext/cron" }
 codex-extension-items = { path = "ext/items" }
 codex-goal-extension = { path = "ext/goal" }
 codex-git-attribution = { path = "ext/git-attribution" }

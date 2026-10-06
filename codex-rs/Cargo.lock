@@ -2087,6 +2087,7 @@ dependencies = [
  "codex-connectors",
  "codex-core",
  "codex-core-plugins",
+ "codex-cron-extension",
  "codex-diagnostics",
  "codex-exec-server",
  "codex-extension-api",
@@ -3112,6 +3113,23 @@ dependencies = [
  "uuid",
  "wiremock",
  "zip",
+]
+
+[[package]]
+name = "codex-cron-extension"
+version = "0.159.2-fork.1"
+dependencies = [
+ "chrono",
+ "codex-core",
+ "codex-extension-api",
+ "codex-protocol",
+ "codex-tools",
+ "pretty_assertions",
+ "serde",
+ "serde_json",
+ "tokio",
+ "tokio-util",
+ "uuid",
 ]
 
 [[package]]
