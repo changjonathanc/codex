@@ -48,6 +48,7 @@ use codex_core_plugins::PluginMetricsSidecar;
 
 mod async_watcher;
 mod errors;
+mod exit_notice;
 mod head_tail_buffer;
 mod oneshot;
 mod process;
@@ -108,6 +109,7 @@ impl UnifiedExecContext {
 #[derive(Debug)]
 pub(crate) struct ExecCommandRequest {
     pub command: Vec<String>,
+    pub notify_on_exit: bool,
     pub shell: ShellInvocation,
     pub hook_command: String,
     pub process_id: i32,
@@ -184,6 +186,7 @@ impl Default for UnifiedExecProcessManager {
 
 struct ProcessEntry {
     process: Arc<UnifiedExecProcess>,
+    exit_notice: Option<Arc<exit_notice::ExitNotice>>,
     plugin_metrics_sidecar: Option<SharedPluginMetricsSidecar>,
     call_id: String,
     process_id: i32,

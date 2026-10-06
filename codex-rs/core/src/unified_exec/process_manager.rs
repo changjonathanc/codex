@@ -258,6 +258,7 @@ fn exec_server_params_for_request(
 /// Borrowed process state prepared for a `write_stdin` or poll operation.
 struct PreparedProcessHandles {
     process: Arc<UnifiedExecProcess>,
+    exit_notice: Option<Arc<super::exit_notice::ExitNotice>>,
     output: OutputHandles,
     pause_state: Option<watch::Receiver<bool>>,
     session: Option<Arc<crate::session::session::Session>>,
@@ -270,6 +271,7 @@ struct PreparedProcessHandles {
 
 struct InitialExecCommandGuard {
     active: Option<Arc<AtomicBool>>,
+    exit_notice: Option<Arc<super::exit_notice::ExitNotice>>,
     metrics_sidecar: Option<PluginMetricsSidecar>,
     collection_finished: CancellationToken,
 }
@@ -291,6 +293,9 @@ impl InitialExecCommandGuard {
 
 impl Drop for InitialExecCommandGuard {
     fn drop(&mut self) {
+        if let Some(notice) = &self.exit_notice {
+            notice.cancel_if_pending();
+        }
         if let Some(active) = self.active.as_ref() {
             active.store(false, Ordering::Release);
         }
@@ -545,6 +550,9 @@ impl UnifiedExecProcessManager {
             permissions,
         } = attempt;
         let process = Arc::new(process);
+        let exit_notice = request
+            .notify_on_exit
+            .then(|| Arc::new(super::exit_notice::ExitNotice::new()));
         if let Some(completion) = completion.as_ref() {
             let _ = completion.process.set(Arc::clone(&process));
         }
@@ -612,6 +620,7 @@ impl UnifiedExecProcessManager {
                     .load(Ordering::Acquire));
         let mut initial_exec_command_guard = InitialExecCommandGuard {
             active: None,
+            exit_notice: exit_notice.clone(),
             metrics_sidecar,
             collection_finished: process.output_handles().collection_finished.clone(),
         };
@@ -620,6 +629,7 @@ impl UnifiedExecProcessManager {
             initial_exec_command_guard.active = Some(Arc::clone(&initial_exec_command_active));
             self.store_process(
                 Arc::clone(&process),
+                exit_notice.clone(),
                 context,
                 &request.command,
                 request.hook_command.clone(),
@@ -840,6 +850,13 @@ impl UnifiedExecProcessManager {
             (None, exit_code)
         };
 
+        if let Some(notice) = &exit_notice {
+            if response_process_id.is_some() {
+                notice.arm();
+            } else {
+                notice.reported();
+            }
+        }
         let response = ExecCommandToolOutput {
             event_call_id: context.call_id.clone(),
             chunk_id,
@@ -984,6 +1001,7 @@ impl UnifiedExecProcessManager {
         // Revalidate the identity after approval: a removed process ID can be reused.
         let PreparedProcessHandles {
             process,
+            exit_notice,
             output,
             pause_state,
             session,
@@ -1125,6 +1143,16 @@ impl UnifiedExecProcessManager {
             output_omitted_bytes,
             hook_command: Some(hook_command),
         };
+        if response.process_id.is_none() {
+            if let Some(notice) = exit_notice {
+                notice.reported();
+            }
+            if let Some(session) = &session {
+                session
+                    .cancel_notification(&format!("exec:{}", response.event_call_id))
+                    .await;
+            }
+        }
 
         let should_emit_interaction = !request.input.is_empty() || response.process_id.is_some();
         if should_emit_interaction
@@ -1217,6 +1245,7 @@ impl UnifiedExecProcessManager {
 
         Ok(PreparedProcessHandles {
             process: Arc::clone(&entry.process),
+            exit_notice: entry.exit_notice.clone(),
             output,
             pause_state,
             session,
@@ -1232,6 +1261,7 @@ impl UnifiedExecProcessManager {
     async fn store_process(
         &self,
         process: Arc<UnifiedExecProcess>,
+        exit_notice: Option<Arc<super::exit_notice::ExitNotice>>,
         context: &UnifiedExecContext,
         command: &[String],
         hook_command: String,
@@ -1252,6 +1282,7 @@ impl UnifiedExecProcessManager {
             metrics_sidecar.map(|sidecar| Arc::new(std::sync::Mutex::new(Some(sidecar))));
         let entry = ProcessEntry {
             process: Arc::clone(&process),
+            exit_notice: exit_notice.clone(),
             plugin_metrics_sidecar: plugin_metrics_sidecar.clone(),
             call_id: context.call_id.clone(),
             process_id,
@@ -1273,6 +1304,7 @@ impl UnifiedExecProcessManager {
         };
         spawn_exit_watcher(
             Arc::clone(&process),
+            exit_notice,
             context,
             command.to_vec(),
             cwd,

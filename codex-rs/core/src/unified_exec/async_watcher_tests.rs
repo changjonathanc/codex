@@ -101,6 +101,7 @@ async fn completed_output_preserves_bytes_before_subscription(
     let cwd = context.step_context.turn.cwd.clone().into();
     spawn_exit_watcher(
         Arc::clone(&process),
+        /*exit_notice*/ None,
         &context,
         vec!["proof".to_string()],
         cwd,
@@ -317,6 +318,7 @@ async fn exit_watcher_waits_for_late_network_denial_before_classifying_end() -> 
     };
     spawn_exit_watcher(
         Arc::clone(&process),
+        /*exit_notice*/ None,
         &context,
         vec!["proof".to_string()],
         cwd,

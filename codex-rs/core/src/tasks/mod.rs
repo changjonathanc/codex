@@ -449,8 +449,8 @@ impl Session {
 
     /// Starts a regular turn when the session is idle and pending work is waiting.
     ///
-    /// Mail can request a new task with `trigger_turn`, wake durable sleep, or wake a root with
-    /// `wake_on_agent_messages` enabled.
+    /// Pending work includes internal notifications. Mail can request a new task with
+    /// `trigger_turn`, wake durable sleep, or wake a root with `wake_on_agent_messages` enabled.
     ///
     /// This helper generates a fresh sub-id for the synthetic turn before delegating to the
     /// explicit-sub-id variant.
@@ -466,16 +466,37 @@ impl Session {
     /// Starts a regular turn with the provided sub-id when pending work should wake an idle
     /// session.
     ///
-    /// Starts an idle turn for explicit follow-ups, durable sleep, or enabled message wakes.
+    /// The turn is created only when idle and internal events or eligible mailbox mail are pending.
     pub(crate) async fn maybe_start_turn_for_pending_work_with_sub_id(
         self: &Arc<Self>,
         sub_id: String,
     ) {
-        if !self.input_queue.has_pending_mailbox_items().await {
+        let notifications_pending = self.has_pending_notifications().await;
+        if !notifications_pending && !self.input_queue.has_pending_mailbox_items().await {
             return;
         }
 
-        let Some((turn_state, previous_options)) = self.reserve_pending_work_turn().await else {
+        // Scheduled work must respect host draining, just like explicit turn starts.
+        let notification_admission = if notifications_pending {
+            self.services.extensions.admit_turn_start()
+        } else {
+            None
+        };
+        if notifications_pending && notification_admission.is_none() {
+            return;
+        }
+
+        let reservation = if notifications_pending {
+            let mut active_turn = self.active_turn.lock().await;
+            if active_turn.is_some() {
+                return;
+            }
+            let active_turn = active_turn.get_or_insert_with(ActiveTurn::default);
+            Some((Arc::clone(&active_turn.turn_state), Default::default()))
+        } else {
+            self.reserve_pending_work_turn().await
+        };
+        let Some((turn_state, previous_options)) = reservation else {
             return;
         };
 
@@ -493,8 +514,9 @@ impl Session {
         {
             return;
         }
-        let (input, mut start_options) =
+        let (mut input, mut start_options) =
             self.input_queue.get_pending_input(&self.active_turn).await;
+        input.extend(self.take_pending_notifications().await);
         if !input.iter().any(
             |item| matches!(item, TurnInput::InterAgentCommunication(mail) if mail.trigger_turn),
         ) {
@@ -504,6 +526,9 @@ impl Session {
                 .reference_context_item()
                 .await
                 .and_then(|context| context.cyber_access_program);
+        }
+        if notifications_pending && start_options.turn_trigger.is_none() {
+            start_options.turn_trigger = Some("scheduled_notification".into());
         }
         let turn_context = self
             .new_turn_with_default_settings(

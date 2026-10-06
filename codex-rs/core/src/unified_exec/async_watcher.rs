@@ -157,6 +157,7 @@ pub(crate) fn start_streaming_output(process: &UnifiedExecProcess, context: &Uni
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn spawn_exit_watcher(
     process: Arc<UnifiedExecProcess>,
+    exit_notice: Option<Arc<super::exit_notice::ExitNotice>>,
     context: &UnifiedExecContext,
     command: Vec<String>,
     cwd: PathUri,
@@ -188,6 +189,20 @@ pub(crate) fn spawn_exit_watcher(
         let _interaction_guard = interaction_lock.lock_owned().await;
 
         let duration = Instant::now().saturating_duration_since(started_at);
+        let notification_session = Arc::clone(&session_ref);
+        let notification_id = format!("exec:{call_id}");
+        // Keep the event well below the context-item size limit, including JSON escaping.
+        let transcript = if exit_notice.is_some() {
+            resolve_aggregated_output(&output_buffer, String::new()).await
+        } else {
+            String::new()
+        };
+        // Even escaping each character to six bytes fits the 700-byte fragment budget.
+        let excerpt = codex_utils_string::truncate_middle_chars(&transcript, 80);
+        let notification_message = format!(
+            "Command {process_id} completed with exit code {}. Output: {excerpt}",
+            process.exit_code().unwrap_or(-1)
+        );
         let plugin_metrics_sidecar = plugin_metrics_sidecar
             .as_ref()
             .and_then(take_plugin_metrics_sidecar);
@@ -238,6 +253,16 @@ pub(crate) fn spawn_exit_watcher(
                 timed_out,
             )
             .await;
+        }
+        if let Some(notice) = exit_notice
+            && notice.should_notify().await
+            && let Ok(notification) = crate::context::ScheduledNotification::new(
+                notification_id,
+                notification_message,
+                tokio_util::sync::CancellationToken::new(),
+            )
+        {
+            notification_session.queue_notification(notification).await;
         }
     });
 }
