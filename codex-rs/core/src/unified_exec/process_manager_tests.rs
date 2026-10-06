@@ -454,6 +454,7 @@ async fn failed_initial_end_for_unstored_process_uses_fallback_output() {
         "call-unified-denied".to_string(),
     );
     let request = ExecCommandRequest {
+        notify_on_exit: false,
         command: vec![
             "sh".to_string(),
             "-lc".to_string(),
@@ -628,6 +629,7 @@ async fn pruning_does_not_evict_live_process_while_exited_process_is_finalizing(
         store.processes.insert(
             process_id,
             ProcessEntry {
+                exit_notice: None,
                 process: if is_exited {
                     Arc::clone(&exited_process)
                 } else {

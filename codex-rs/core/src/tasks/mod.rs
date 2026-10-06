@@ -429,8 +429,8 @@ impl Session {
 
     /// Starts a regular turn when the session is idle and pending work is waiting.
     ///
-    /// Pending work includes mailbox mail marked with `trigger_turn`, or any mailbox mail while
-    /// an outstanding durable sleep is attached to the thread.
+    /// Pending work includes internal notifications, mailbox mail marked with `trigger_turn`,
+    /// or any mailbox mail while an outstanding durable sleep is attached to the thread.
     ///
     /// This helper generates a fresh sub-id for the synthetic turn before delegating to the
     /// explicit-sub-id variant.
@@ -446,16 +446,23 @@ impl Session {
     /// Starts a regular turn with the provided sub-id when pending work should wake an idle
     /// session.
     ///
-    /// The turn is created only when the session is idle and mailbox mail either requests a turn
-    /// or can wake an outstanding durable sleep.
+    /// The turn is created only when idle and internal events or eligible mailbox mail are pending.
     pub(crate) async fn maybe_start_turn_for_pending_work_with_sub_id(
         self: &Arc<Self>,
         sub_id: String,
     ) {
-        if !self.input_queue.has_pending_mailbox_items().await
-            || (!self.input_queue.has_trigger_turn_mailbox_items().await
-                && !self.has_outstanding_durable_sleep())
+        let notifications_pending = self.has_pending_notifications().await;
+        if !notifications_pending
+            && (!self.input_queue.has_pending_mailbox_items().await
+                || (!self.input_queue.has_trigger_turn_mailbox_items().await
+                    && !self.has_outstanding_durable_sleep()))
         {
+            return;
+        }
+
+        // Scheduled work must respect host draining, just like explicit turn starts.
+        let notification_admission = self.services.extensions.admit_turn_start();
+        if notifications_pending && notification_admission.is_none() {
             return;
         }
 
@@ -482,8 +489,12 @@ impl Session {
         {
             return;
         }
-        let (input, mut start_options) =
+        let (mut input, mut start_options) =
             self.input_queue.get_pending_input(&self.active_turn).await;
+        input.extend(self.take_pending_notifications().await);
+        if notifications_pending && start_options.turn_trigger.is_none() {
+            start_options.turn_trigger = Some("scheduled_notification".into());
+        }
         if !input.iter().any(
             |item| matches!(item, TurnInput::InterAgentCommunication(mail) if mail.trigger_turn),
         ) {

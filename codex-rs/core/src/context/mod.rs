@@ -45,6 +45,8 @@ mod realtime_start_instructions;
 mod realtime_start_with_instructions;
 mod recommended_plugins_instructions;
 mod rollout_budget;
+mod scheduled_notification;
+pub use scheduled_notification::ScheduledNotification;
 mod subagent_notification;
 mod token_budget_context;
 mod turn_aborted;

@@ -273,6 +273,16 @@ impl CodexThread {
         &self.session.services.thread_extension_data
     }
 
+    /// Schedule bounded internal input after the current turn, coalesced by its ID.
+    pub async fn queue_notification(&self, notification: crate::context::ScheduledNotification) {
+        self.session.queue_notification(notification).await;
+    }
+
+    /// Cancel an internal event that has not yet started a turn.
+    pub async fn cancel_notification(&self, id: &str) {
+        self.session.cancel_notification(id).await;
+    }
+
     pub async fn shutdown_and_wait(&self) -> CodexResult<()> {
         self.io.shutdown_and_wait().await
     }

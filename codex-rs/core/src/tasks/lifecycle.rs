@@ -67,7 +67,9 @@ impl Session {
                 cause
             }
         };
-        if self.input_queue.has_trigger_turn_mailbox_items().await {
+        if self.input_queue.has_trigger_turn_mailbox_items().await
+            || self.has_pending_notifications().await
+        {
             return;
         }
 

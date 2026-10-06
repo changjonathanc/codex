@@ -300,6 +300,7 @@ impl ExecCommandHandler {
         let shell_type = resolved_command.shell_type;
         let ExecCommandArgs {
             mut tty,
+            notify_on_exit,
             yield_time_ms,
             timeout_ms,
             max_output_tokens,
@@ -418,6 +419,7 @@ impl ExecCommandHandler {
         let process_id = manager.allocate_process_id().await;
         let request = ExecCommandRequest {
             command,
+            notify_on_exit: notify_on_exit && completion_timeout.is_none(),
             shell_type,
             hook_command: hook_command.clone(),
             process_id,

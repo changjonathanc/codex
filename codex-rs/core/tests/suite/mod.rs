@@ -190,6 +190,8 @@ mod rollout_list_find;
 mod safety_buffering;
 mod safety_check_downgrade;
 mod scenarios;
+mod scheduled_event_queue;
+mod scheduled_notifications;
 mod search_tool;
 mod settings_commits;
 mod settings_constraints;

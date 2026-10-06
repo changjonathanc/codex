@@ -37,6 +37,10 @@ fn exec_command_tool_matches_expected_spec() {
 
     let mut properties = BTreeMap::from([
         (
+            "notify_on_exit".to_string(),
+            JsonSchema::boolean(Some("If the command is still running when this call returns, send one internal completion notice after the current turn ends. Defaults to false. No need to poll for completion when true.".into())),
+        ),
+        (
             "cmd".to_string(),
             JsonSchema::string(Some("Shell command to execute.".to_string())),
         ),
