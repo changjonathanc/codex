@@ -94,3 +94,30 @@ fn only_explicit_final_answers_get_a_treatment() {
             .any(|span| span.style.fg == Some(Color::Magenta))
     }));
 }
+
+#[test]
+fn final_message_color_changes_only_the_rail() {
+    let color = Color::Rgb(137, 180, 250);
+    let default = AgentMarkdownCell::new(ANSWER.into(), Path::new("/tmp"))
+        .with_message_phase(Some(MessagePhase::FinalAnswer));
+    let custom = AgentMarkdownCell::new(ANSWER.into(), Path::new("/tmp"))
+        .with_message_phase(Some(MessagePhase::FinalAnswer))
+        .with_final_message_color(color);
+    let expected = default.display_hyperlink_lines(/*width*/ 48);
+    let actual = custom.display_hyperlink_lines(/*width*/ 48);
+    assert_eq!(actual.len(), expected.len());
+    for (actual, expected) in actual.iter().zip(&expected) {
+        assert_eq!(actual.line.spans[0].style.fg, Some(color));
+        assert_eq!(actual.hyperlinks, expected.hyperlinks);
+        assert_eq!(actual.line.spans[1..], expected.line.spans[1..]);
+    }
+    assert_eq!(custom.raw_lines(), default.raw_lines());
+    insta::assert_debug_snapshot!(actual[..2]);
+    let commentary = AgentMarkdownCell::new(ANSWER.into(), Path::new("/tmp"))
+        .with_message_phase(Some(MessagePhase::Commentary))
+        .with_final_message_color(color);
+    assert_eq!(
+        commentary.display_lines(/*width*/ 48),
+        AgentMarkdownCell::new(ANSWER.into(), Path::new("/tmp")).display_lines(/*width*/ 48)
+    );
+}

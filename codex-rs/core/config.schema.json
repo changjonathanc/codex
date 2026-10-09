@@ -1648,6 +1648,10 @@
       },
       "type": "object"
     },
+    "FinalMessageColor": {
+      "pattern": "^#[0-9a-fA-F]{6}$",
+      "type": "string"
+    },
     "ForcedChatgptWorkspaceIds": {
       "anyOf": [
         {
@@ -4409,6 +4413,14 @@
             "welcome": true
           },
           "description": "Individual visual effects. Each also requires animations to be enabled."
+        },
+        "final_message_color": {
+          "allOf": [
+            {
+              "$ref": "#/definitions/FinalMessageColor"
+            }
+          ],
+          "description": "Final-answer left rail color in #RRGGBB format. When unset, uses the terminal's ANSI magenta color."
         },
         "fullscreen_transcript": {
           "default": true,

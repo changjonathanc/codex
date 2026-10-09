@@ -8,6 +8,26 @@ use codex_terminal_detection::Multiplexer;
 use pretty_assertions::assert_eq;
 
 #[tokio::test]
+async fn final_message_color_loads_from_the_user_config_file() -> anyhow::Result<()> {
+    let home = tempfile::tempdir()?;
+    std::fs::write(
+        home.path().join("config.toml"),
+        "[tui]\nfinal_message_color = '#89b4fa'\n",
+    )?;
+    let config = ConfigBuilder::default()
+        .codex_home(home.path().to_path_buf())
+        .loader_overrides(LoaderOverrides::without_managed_config_for_tests())
+        .build()
+        .await?;
+    let local = LocalSettings::from(&config);
+    assert_eq!(
+        local.tui.final_message_color.unwrap().rgb(),
+        [137, 180, 250]
+    );
+    Ok(())
+}
+
+#[tokio::test]
 async fn launch_screen_mode_survives_configuration_reload() -> anyhow::Result<()> {
     use crate::transcript_mode::TranscriptMode;
     use codex_config::types::AltScreenMode;

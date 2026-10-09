@@ -2,6 +2,9 @@
 
 #[path = "tests/daybreak_tests.rs"]
 mod daybreak_tests;
+
+#[path = "tests/final_message_color_tests.rs"]
+mod final_message_color_tests;
 #[path = "tests/math_interruption_tests.rs"]
 mod math_interruption_tests;
 

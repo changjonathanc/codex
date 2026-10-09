@@ -63,9 +63,42 @@ async fn final_message_phase_survives_live_completion_and_replay() {
             let text = lines_to_single_string(&completed[0]);
             assert!(text.contains("The final result."));
             assert_eq!(
-                text.contains("FINAL ANSWER"),
+                text.lines().any(|line| line.starts_with("┃ ")),
                 phase == Some(MessagePhase::FinalAnswer)
             );
         }
     }
+}
+
+#[tokio::test]
+async fn final_message_color_is_used_for_replay() {
+    let (mut chat, mut rx, _ops) = make_chatwidget_manual(/*model_override*/ None).await;
+    let color = codex_config::types::FinalMessageColor::try_from("#89b4fa".to_string()).unwrap();
+    chat.local_settings.tui.final_message_color = Some(color);
+    while rx.try_recv().is_ok() {}
+    chat.on_agent_message_item_completed(
+        AgentMessageItem {
+            id: "color-review".into(),
+            content: vec![AgentMessageContent::Text {
+                text: "Colored result.".into(),
+            }],
+            phase: Some(MessagePhase::FinalAnswer),
+            memory_citation: None,
+            delivery: None,
+            questions: None,
+        },
+        "turn-color-review",
+        /*from_replay*/ true,
+    );
+    let completed: Vec<_> = std::iter::from_fn(|| rx.try_recv().ok())
+        .filter_map(|event| match event {
+            AppEvent::InsertHistoryCell(cell) => Some(cell.display_lines(/*width*/ 48)),
+            _ => None,
+        })
+        .collect();
+    assert_eq!(completed.len(), 1);
+    assert_eq!(
+        completed[0][0].spans[0].style.fg,
+        Some(history_cell::final_message_color(Some(color)))
+    );
 }

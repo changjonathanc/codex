@@ -32,6 +32,7 @@ use schemars::JsonSchema;
 use serde::Deserialize;
 use serde::Serialize;
 
+pub use crate::final_message_color::FinalMessageColor;
 pub use crate::tui_effects::TuiEffects;
 pub use crate::tui_keymap::KeybindingSpec;
 pub use crate::tui_keymap::KeybindingsSpec;
@@ -908,6 +909,11 @@ pub struct Tui {
     /// Use `/theme` in the TUI or see `$CODEX_HOME/themes` for custom themes.
     #[serde(default)]
     pub theme: Option<String>,
+
+    /// Final-answer left rail color in #RRGGBB format.
+    /// When unset, uses the terminal's ANSI magenta color.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub final_message_color: Option<FinalMessageColor>,
 
     /// Pet id to preselect in the terminal pet picker.
     ///

@@ -82,6 +82,12 @@ impl LocalSettings {
                 status_line_use_colors: config.tui_status_line_use_colors,
                 terminal_title: config.tui_terminal_title.clone(),
                 theme: config.tui_theme.clone(),
+                final_message_color: config
+                    .config_layer_stack
+                    .effective_config()
+                    .get("tui")
+                    .and_then(|tui| tui.get("final_message_color"))
+                    .and_then(|value| value.clone().try_into().ok()),
                 pet: config.tui_pet.clone(),
                 pet_anchor: config.tui_pet_anchor,
                 session_picker_view: Some(config.tui_session_picker_view),

@@ -13,6 +13,7 @@ pub mod config_toml;
 mod constraint;
 mod diagnostics;
 mod filesystem_constraints;
+mod final_message_color;
 mod fingerprint;
 mod guardian;
 mod hook_config;
