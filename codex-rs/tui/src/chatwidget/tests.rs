@@ -294,6 +294,9 @@ mod sparkle_submission_tests;
 #[path = "tests/startup_submission_tests.rs"]
 mod startup_submission_tests;
 mod status_and_layout;
+
+#[path = "tests/final_message_tests.rs"]
+mod final_message_tests;
 mod status_command_tests;
 mod status_surface_previews;
 #[path = "tests/subagent_activity_tests.rs"]

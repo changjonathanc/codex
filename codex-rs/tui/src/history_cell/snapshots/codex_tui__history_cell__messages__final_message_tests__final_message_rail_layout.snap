@@ -1,0 +1,113 @@
+---
+source: tui/src/history_cell/final_message_tests.rs
+assertion_line: 34
+expression: "previews.join(\"\\n\\n\")"
+---
+short, width 80
+┃ FINAL ANSWER
+┃ Updated the final-message display.
+┃
+┃ • Final answers are easier to find.
+┃ • Commentary stays unchanged.
+┃ • Nothing was committed or installed.
+┃
+┃ Checks: 12 passed.
+┃
+┃ See the patch (https://example.test/patch).
+
+rich, width 80
+┃ FINAL ANSWER
+┃ ## Result
+┃
+┃ The display now keeps the message phase. Long final answers wrap at the
+┃ terminal width without losing their links or markdown.
+┃
+┃ let phase = MessagePhase::FinalAnswer;
+┃
+┃  Item            Result
+┃ ━━━━━━━━━━━━━━  ━━━━━━━━━━━
+┃  Final answer    Clear
+┃ ──────────────  ───────────
+┃  Commentary      Unchanged
+┃
+┃ See the full review (https://example.test/review).
+
+short, width 48
+┃ FINAL ANSWER
+┃ Updated the final-message display.
+┃
+┃ • Final answers are easier to find.
+┃ • Commentary stays unchanged.
+┃ • Nothing was committed or installed.
+┃
+┃ Checks: 12 passed.
+┃
+┃ See the patch (https://example.test/patch).
+
+rich, width 48
+┃ FINAL ANSWER
+┃ ## Result
+┃
+┃ The display now keeps the message phase. Long
+┃ final answers wrap at the terminal width
+┃ without losing their links or markdown.
+┃
+┃ let phase = MessagePhase::FinalAnswer;
+┃
+┃  Item            Result
+┃ ━━━━━━━━━━━━━━  ━━━━━━━━━━━
+┃  Final answer    Clear
+┃ ──────────────  ───────────
+┃  Commentary      Unchanged
+┃
+┃ See the full review
+┃ (https://example.test/review).
+
+short, width 24
+┃ FINAL ANSWER
+┃ Updated the final-
+┃ message display.
+┃
+┃ • Final answers are
+┃   easier to find.
+┃
+┃ • Commentary stays
+┃   unchanged.
+┃
+┃ • Nothing was
+┃   committed or
+┃   installed.
+┃
+┃ Checks: 12 passed.
+┃
+┃ See the patch
+┃ (https://example.test/
+┃ patch).
+
+rich, width 24
+┃ FINAL ANSWER
+┃ ## Result
+┃
+┃ The display now keeps
+┃ the message phase.
+┃ Long final answers
+┃ wrap at the terminal
+┃ width without losing
+┃ their links or
+┃ markdown.
+┃
+┃ let phase =
+┃ MessagePhase::FinalAns
+┃ wer;
+┃
+┃  Item        Result
+┃ ━━━━━━━━━━  ━━━━━━━━━━
+┃  Final       Clear
+┃  answer
+┃ ──────────  ──────────
+┃  Commenta    Unchange
+┃  ry          d
+┃
+┃ See the full review
+┃ (https://example.test/
+┃ review).

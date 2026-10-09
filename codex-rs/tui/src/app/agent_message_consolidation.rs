@@ -27,6 +27,7 @@ impl App {
         &mut self,
         tui: &mut tui::Tui,
         source: String,
+        phase: Option<codex_protocol::models::MessagePhase>,
         cwd: PathBuf,
         inline_visualization_context: Option<InlineVisualizationContext>,
         scrollback_reflow: ConsolidationScrollbackReflow,
@@ -63,7 +64,8 @@ impl App {
                     source,
                     &cwd,
                     inline_visualization_context,
-                ),
+                )
+                .with_message_phase(phase),
             );
             self.native_history
                 .consolidate(&self.transcript_cells[start..end], &consolidated);

@@ -179,6 +179,7 @@ async fn list_spacing_completion_preserves_the_scrolled_reader() -> Result<()> {
     app.handle_consolidate_agent_message(
         &mut tui,
         "- First item wraps onto a second row\n- b\n- c".into(),
+        /*phase*/ None,
         app.config.cwd.to_path_buf(),
         /*inline_visualization_context*/ None,
         ConsolidationScrollbackReflow::Required,

@@ -80,10 +80,14 @@ impl ChatWidget {
     }
 
     pub(super) fn flush_answer_stream_with_separator(&mut self) {
-        self.flush_answer_stream(/*completed_message*/ None);
+        self.flush_answer_stream(/*completed_message*/ None, /*phase*/ None);
     }
 
-    fn flush_answer_stream(&mut self, completed_message: Option<&str>) {
+    fn flush_answer_stream(
+        &mut self,
+        completed_message: Option<&str>,
+        phase: Option<MessagePhase>,
+    ) {
         let had_stream_controller = self.stream_controller.is_some();
         if let Some(mut controller) = self.stream_controller.take() {
             let had_live_tail = controller.has_live_tail();
@@ -123,6 +127,13 @@ impl ChatWidget {
                 })
             });
             if let Some(source) = source {
+                // Preserve provisional history publication order. Only the canonical final
+                // display needs a forced repaint to add its treatment to scrollback.
+                let scrollback_reflow = if matches!(phase, Some(MessagePhase::FinalAnswer)) {
+                    crate::app_event::ConsolidationScrollbackReflow::Required
+                } else {
+                    scrollback_reflow
+                };
                 let inline_visualization_context = self.thread_id.and_then(|thread_id| {
                     crate::inline_visualization::InlineVisualizationContext::from_config(
                         &self.config,
@@ -132,6 +143,7 @@ impl ChatWidget {
                 self.note_stream_consolidation_queued();
                 self.app_event_tx.send(AppEvent::ConsolidateAgentMessage {
                     source,
+                    phase,
                     cwd: self.config.cwd.to_path_buf(),
                     inline_visualization_context,
                     scrollback_reflow,
@@ -184,7 +196,11 @@ impl ChatWidget {
         self.status_state.pending_status_indicator_restore = false;
     }
 
-    pub(super) fn finalize_completed_assistant_message(&mut self, message: Option<&str>) {
+    pub(super) fn finalize_completed_assistant_message(
+        &mut self,
+        message: Option<&str>,
+        phase: Option<MessagePhase>,
+    ) {
         if self.stream_controller.is_none()
             && let Some(message) = message
             && !message.is_empty()
@@ -193,7 +209,7 @@ impl ChatWidget {
         }
         // Item completion is authoritative. Use it for consolidation so any
         // deltas dropped by a saturated transport cannot truncate the transcript.
-        self.flush_answer_stream(message);
+        self.flush_answer_stream(message, phase);
         self.handle_stream_finished();
         self.request_redraw();
     }
@@ -439,12 +455,16 @@ impl ChatWidget {
                     parsed.visible_markdown.clone(),
                     self.config.cwd.as_path(),
                     context,
-                ),
+                )
+                .with_message_phase(item.phase.clone()),
             );
             self.handle_stream_finished();
             self.request_redraw();
         } else {
-            self.finalize_completed_assistant_message(Some(parsed.visible_markdown.as_str()));
+            self.finalize_completed_assistant_message(
+                Some(parsed.visible_markdown.as_str()),
+                item.phase.clone(),
+            );
         }
         if !parsed.visible_markdown.is_empty() {
             self.transcript

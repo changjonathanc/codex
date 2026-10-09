@@ -1,6 +1,7 @@
 //! User, assistant, reasoning, and streaming message history cells.
 //! Completed reasoning is retained in the expanded transcript, not compact scrollback.
 
+use super::final_message;
 use super::markdown_render_cache::MarkdownRenderCache;
 use super::*;
 use crate::style::accent_color_on;
@@ -506,6 +507,7 @@ pub(crate) struct AgentMarkdownCell {
     inline_visualization_context: Option<crate::inline_visualization::InlineVisualizationContext>,
     rendered_lines: Option<MarkdownRenderCache>,
     spoken_artifacts: bool,
+    final_answer: bool,
 }
 
 impl AgentMarkdownCell {
@@ -539,6 +541,7 @@ impl AgentMarkdownCell {
             inline_visualization_context,
             rendered_lines,
             spoken_artifacts: false,
+            final_answer: false,
         }
     }
 
@@ -550,6 +553,19 @@ impl AgentMarkdownCell {
         );
         cell.spoken_artifacts = true;
         cell
+    }
+
+    pub(crate) fn with_message_phase(
+        mut self,
+        phase: Option<codex_protocol::models::MessagePhase>,
+    ) -> Self {
+        if matches!(
+            phase,
+            Some(codex_protocol::models::MessagePhase::FinalAnswer)
+        ) {
+            self.final_answer = true;
+        }
+        self
     }
 }
 
@@ -605,6 +621,9 @@ impl AgentMarkdownCell {
             } else {
                 lines
             };
+            if self.final_answer {
+                return final_message::render(lines, width);
+            }
             normalize_whitespace_only_hyperlink_lines(prefix_hyperlink_lines(
                 lines,
                 "• ".dim(),
@@ -649,6 +668,10 @@ impl HistoryCell for AgentMarkdownCell {
 #[cfg(test)]
 #[path = "messages_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "final_message_tests.rs"]
+mod final_message_tests;
 
 /// Transient active-cell representation of the mutable tail of an agent stream.
 ///

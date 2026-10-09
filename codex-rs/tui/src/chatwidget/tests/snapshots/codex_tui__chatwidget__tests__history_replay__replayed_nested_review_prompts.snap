@@ -1,5 +1,6 @@
 ---
 source: tui/src/chatwidget/tests/history_replay.rs
+assertion_line: 405
 expression: rendered
 ---
 >> Code review started: current changes <<
@@ -20,4 +21,5 @@ expression: rendered
 
 << Code review finished >>
 
-• review result is retained
+┃ FINAL ANSWER
+┃ review result is retained
