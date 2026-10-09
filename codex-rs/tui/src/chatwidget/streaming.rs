@@ -492,7 +492,10 @@ impl ChatWidget {
                     context,
                 )
                 .with_copy_source(Some(message.clone()))
-                .with_message_phase(item.phase.clone()),
+                .with_message_phase(item.phase.clone())
+                .with_final_message_color(history_cell::final_message_color(
+                    self.local_settings.tui.final_message_color,
+                )),
             );
             self.handle_stream_finished();
             self.request_redraw();

@@ -946,7 +946,10 @@ impl App {
                         inline_visualization_context,
                     )
                     .with_copy_source(copy_source)
-                    .with_message_phase(phase),
+                    .with_message_phase(phase)
+                    .with_final_message_color(history_cell::final_message_color(
+                        self.local_settings.tui.final_message_color,
+                    )),
                     scrollback_reflow,
                     deferred_history_cell,
                 )?;

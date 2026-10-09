@@ -509,6 +509,7 @@ pub(crate) struct AgentMarkdownCell {
     rendered_lines: Option<MarkdownRenderCache>,
     spoken_artifacts: bool,
     final_answer: bool,
+    final_message_color: Color,
 }
 
 impl AgentMarkdownCell {
@@ -549,6 +550,7 @@ impl AgentMarkdownCell {
             rendered_lines,
             spoken_artifacts: false,
             final_answer: false,
+            final_message_color: Color::Magenta,
         }
     }
 
@@ -572,6 +574,11 @@ impl AgentMarkdownCell {
         ) {
             self.final_answer = true;
         }
+        self
+    }
+
+    pub(crate) fn with_final_message_color(mut self, color: Color) -> Self {
+        self.final_message_color = color;
         self
     }
 }
@@ -629,7 +636,7 @@ impl AgentMarkdownCell {
                 lines
             };
             if self.final_answer {
-                return final_message::render(lines, width);
+                return final_message::render(lines, width, self.final_message_color);
             }
             normalize_whitespace_only_hyperlink_lines(prefix_hyperlink_lines(
                 lines,

@@ -14,7 +14,6 @@ expression: "normalize_voice_snapshot_directory(&rendered, &app.config.cwd)"
   /permissions - choose what Codex is allowed to do
   /model - choose what model and reasoning effort to use
   /review - review any changes and find issues
-┃ FINAL ANSWER
 ┃ Earlier answer
 • spoken complete
 

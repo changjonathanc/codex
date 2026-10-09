@@ -108,6 +108,7 @@ mod base;
 mod dynamic;
 mod exec;
 mod final_message;
+pub(crate) use final_message::configured_color as final_message_color;
 mod hook_cell;
 mod markdown_render_cache;
 mod mcp;
