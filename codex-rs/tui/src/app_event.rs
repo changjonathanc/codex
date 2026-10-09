@@ -1198,6 +1198,7 @@ pub(crate) enum AppEvent {
     ConsolidateAgentMessage {
         source: String,
         copy_source: Option<String>,
+        phase: Option<codex_protocol::models::MessagePhase>,
         cwd: PathBuf,
         inline_visualization_context: Option<InlineVisualizationContext>,
         scrollback_reflow: ConsolidationScrollbackReflow,

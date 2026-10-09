@@ -269,6 +269,7 @@ async fn inactive_thread_user_verification_preserves_foreground_stream() -> Resu
             AppEvent::ConsolidateAgentMessage {
                 source,
                 copy_source,
+                phase,
                 cwd,
                 inline_visualization_context,
                 scrollback_reflow,
@@ -282,7 +283,8 @@ async fn inactive_thread_user_verification_preserves_foreground_stream() -> Resu
                         &cwd,
                         inline_visualization_context,
                     )
-                    .with_copy_source(copy_source),
+                    .with_copy_source(copy_source)
+                    .with_message_phase(phase),
                     scrollback_reflow,
                     deferred_history_cell,
                 )?;

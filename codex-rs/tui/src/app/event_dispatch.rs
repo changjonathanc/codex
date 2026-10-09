@@ -932,6 +932,7 @@ impl App {
             AppEvent::ConsolidateAgentMessage {
                 source,
                 copy_source,
+                phase,
                 cwd,
                 inline_visualization_context,
                 scrollback_reflow,
@@ -939,7 +940,13 @@ impl App {
             } => {
                 self.handle_consolidate_agent_message(
                     tui,
-                    history_cell::AgentMarkdownCell::new_with_inline_visualizations(source, &cwd, inline_visualization_context).with_copy_source(copy_source),
+                    history_cell::AgentMarkdownCell::new_with_inline_visualizations(
+                        source,
+                        &cwd,
+                        inline_visualization_context,
+                    )
+                    .with_copy_source(copy_source)
+                    .with_message_phase(phase),
                     scrollback_reflow,
                     deferred_history_cell,
                 )?;
