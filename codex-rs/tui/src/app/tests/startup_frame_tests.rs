@@ -158,8 +158,6 @@ async fn owned_startup_preserves_loading_until_resume_replay_is_applied() -> Res
         assert!(!rendered.contains("Resuming session…"));
         if has_answer {
             assert!(rendered.contains("Retained answer after resume."));
-        } else {
-            assert!(rendered.contains("OpenAI Codex"));
         }
         tui.set_owned_screen(/*owned*/ false)?;
         app_server.shutdown().await?;

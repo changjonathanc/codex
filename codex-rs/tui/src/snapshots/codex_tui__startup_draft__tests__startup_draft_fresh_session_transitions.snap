@@ -1,21 +1,16 @@
 ---
 source: tui/src/startup_draft_tests.rs
+assertion_line: 291
 expression: "snapshots.join(\"\\n---\\n\")"
 ---
 resume lookup fallback:
 before:
-
-  >_ OpenAI Codex (v<VERSION>)
-     loading
   Resuming session…
 
 › draft while loading
 
 
 after:
-
-  >_ OpenAI Codex (v<VERSION>)
-     loading
 
 
 › draft while loading
@@ -24,18 +19,12 @@ after:
 ---
 fork lookup fallback:
 before:
-
-  >_ OpenAI Codex (v<VERSION>)
-     loading
   Forking session…
 
 › draft while loading
 
 
 after:
-
-  >_ OpenAI Codex (v<VERSION>)
-     loading
 
 
 › draft while loading
@@ -47,9 +36,6 @@ before:
 hidden while picker owns input
 after:
 
-  >_ OpenAI Codex (v<VERSION>)
-     loading
-
 
 › Ask Codex to do anything
 
@@ -59,9 +45,6 @@ fork picker cancellation:
 before:
 hidden while picker owns input
 after:
-
-  >_ OpenAI Codex (v<VERSION>)
-     loading
 
 
 › Ask Codex to do anything

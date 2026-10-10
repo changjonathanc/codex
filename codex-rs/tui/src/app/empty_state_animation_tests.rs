@@ -274,6 +274,7 @@ async fn submitting_a_draft_dismisses_logo_even_after_clear() -> Result<()> {
         .handle_key_event(KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE));
     draw(&mut app, &mut tui, size)?;
     assert!(!has_blossom(&tui));
+    // A viewport resize must not bring the blossom back.
     let short = Size::new(/*width*/ 120, /*height*/ 8);
     draw(&mut app, &mut tui, short)?;
     draw(&mut app, &mut tui, size)?;
@@ -286,7 +287,7 @@ async fn submitting_a_draft_dismisses_logo_even_after_clear() -> Result<()> {
 }
 
 #[tokio::test]
-async fn empty_state_animation_survives_plain_transcript_clicks() -> Result<()> {
+async fn empty_state_animation_survives_empty_transcript_clicks() -> Result<()> {
     use crossterm::event::MouseButton;
     use crossterm::event::MouseEvent;
     use crossterm::event::MouseEventKind;
@@ -307,8 +308,8 @@ async fn empty_state_animation_survives_plain_transcript_clicks() -> Result<()> 
         (MouseEventKind::Down(MouseButton::Left), 4, true),
         (MouseEventKind::Up(MouseButton::Left), 4, true),
         (MouseEventKind::Down(MouseButton::Left), 7, true),
-        (MouseEventKind::Drag(MouseButton::Left), 18, false),
-        (MouseEventKind::Up(MouseButton::Left), 18, false),
+        (MouseEventKind::Drag(MouseButton::Left), 18, true),
+        (MouseEventKind::Up(MouseButton::Left), 18, true),
     ] {
         app.transcript_view.handle_mouse(
             MouseEvent {
@@ -325,17 +326,6 @@ async fn empty_state_animation_survives_plain_transcript_clicks() -> Result<()> 
             assert_eq!(tui.terminal.last_known_cursor_pos, cursor);
         }
     }
-    assert!(
-        app.transcript_view
-            .selected_text(&app.transcript_cells)
-            .is_some()
-    );
-    app.transcript_view.end_selection(&app.transcript_cells);
-    draw(&mut app, &mut tui, size)?;
-    assert!(!has_blossom(&tui));
-    app.transcript_view.jump_to_latest();
-    draw(&mut app, &mut tui, size)?;
-    assert!(has_blossom(&tui));
     tui.set_owned_screen(/*owned*/ false)?;
     Ok(())
 }

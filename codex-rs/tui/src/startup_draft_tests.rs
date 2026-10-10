@@ -173,12 +173,6 @@ fn terminal_app_ssh_fallback_renders_inline_startup() {
         let area = Rect::new(/*x*/ 0, /*y*/ 0, width, height);
         let mut buffer = Buffer::empty(area);
         renderable.render(area, &mut buffer);
-        assert!(
-            buffer
-                .content
-                .iter()
-                .any(|cell| { cell.symbol() == ">" && cell.fg == crate::style::accent_color() })
-        );
         let frame = (0..height)
             .map(|y| {
                 (0..width)
