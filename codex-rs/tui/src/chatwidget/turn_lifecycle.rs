@@ -1,5 +1,6 @@
 //! Agent-turn lifecycle state for `ChatWidget`.
 
+use std::collections::HashMap;
 use std::collections::HashSet;
 use std::time::Instant;
 
@@ -15,6 +16,8 @@ pub(super) struct TurnLifecycleState {
     /// Completion labels already inserted into this thread's visible history.
     pub(super) rendered_completion_turn_ids: HashSet<String>,
     pub(super) goal_status_active_turn_started_at: Option<Instant>,
+    pub(super) user_message_started_at_ms: HashMap<String, i64>,
+    pub(super) replay_user_message_timestamp_ms: Option<i64>,
 }
 
 impl TurnLifecycleState {
@@ -26,6 +29,8 @@ impl TurnLifecycleState {
             budget_limited_turn_ids: HashSet::new(),
             rendered_completion_turn_ids: HashSet::new(),
             goal_status_active_turn_started_at: None,
+            user_message_started_at_ms: HashMap::new(),
+            replay_user_message_timestamp_ms: None,
         }
     }
 
@@ -53,6 +58,8 @@ impl TurnLifecycleState {
         self.last_turn_id = None;
         self.budget_limited_turn_ids.clear();
         self.rendered_completion_turn_ids.clear();
+        self.user_message_started_at_ms.clear();
+        self.replay_user_message_timestamp_ms = None;
     }
 
     pub(super) fn set_prevent_idle_sleep(&mut self, enabled: bool) {

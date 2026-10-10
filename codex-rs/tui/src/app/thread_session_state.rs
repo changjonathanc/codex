@@ -83,10 +83,12 @@ impl App {
                 // thread-scoped state from the currently active session.
                 session.collaboration_mode = None;
                 session.personality = None;
+                session.user_message_timestamps.clear();
             }
             session
         } else {
             ThreadSessionState {
+                user_message_timestamps: Default::default(),
                 windows_sandbox_host: crate::app::WindowsSandboxHost::Local,
                 thread_id,
                 forked_from_id: None,
@@ -172,6 +174,7 @@ mod tests {
 
     fn test_thread_session(thread_id: ThreadId, cwd: PathBuf) -> ThreadSessionState {
         ThreadSessionState {
+            user_message_timestamps: Default::default(),
             windows_sandbox_host: crate::app::WindowsSandboxHost::Local,
             thread_id,
             forked_from_id: None,

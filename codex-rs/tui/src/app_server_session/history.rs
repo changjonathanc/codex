@@ -8,7 +8,6 @@ use crate::legacy_core::config::Config;
 use crate::local_settings::LocalSettings;
 use crate::resize_reflow_cap::resize_reflow_max_rows;
 use crate::thread_transcript::RawReasoningVisibility;
-use crate::thread_transcript::thread_items_to_transcript_cells;
 use codex_app_server_protocol::ClientRequest;
 use codex_app_server_protocol::SortDirection;
 use codex_app_server_protocol::Thread;
@@ -136,6 +135,13 @@ pub(crate) struct ThreadHistoryPagination {
 }
 
 impl AppServerSession {
+    pub(crate) fn user_message_timestamps(
+        &self,
+        thread_id: ThreadId,
+    ) -> Option<&std::collections::HashMap<String, i64>> {
+        self.user_message_timestamps.get(&thread_id)
+    }
+
     pub(crate) async fn revert_thread(
         &mut self,
         thread_id: ThreadId,
@@ -282,6 +288,14 @@ impl AppServerSession {
             .collect::<HashSet<_>>();
         let mut items = Vec::new();
         for entry in page.data {
+            if matches!(entry.item, ThreadItem::UserMessage { .. })
+                && let Some(timestamp) = entry.started_at_ms.or(entry.completed_at_ms)
+            {
+                self.user_message_timestamps
+                    .entry(thread_id)
+                    .or_default()
+                    .insert(entry.item.id().to_string(), timestamp);
+            }
             while !turns.iter().any(|turn| turn.id == entry.turn_id) {
                 let Some(cursor) = state.next_turn_cursor.take() else {
                     break;
@@ -383,13 +397,13 @@ impl AppServerSession {
             }
             if let Some((config, local_settings)) = config.zip(local_settings) {
                 rendered_rows = rendered_history_rows(
-                    thread_id,
                     thread,
                     items,
                     config,
                     local_settings,
                     width,
                     rendered_rows,
+                    self.user_message_timestamps(thread_id),
                 );
             } else {
                 rendered_rows = rendered_rows.saturating_add(items.len());
@@ -406,13 +420,13 @@ impl AppServerSession {
 }
 
 fn rendered_history_rows(
-    thread_id: ThreadId,
     thread: &Thread,
     items: Vec<ThreadItem>,
     config: &Config,
     local_settings: &crate::local_settings::LocalSettings,
     width: u16,
     rendered_rows: usize,
+    timestamps: Option<&std::collections::HashMap<String, i64>>,
 ) -> usize {
     let visibility = if config.show_raw_agent_reasoning {
         RawReasoningVisibility::Visible
@@ -424,12 +438,13 @@ fn rendered_history_rows(
     } else {
         HistoryRenderMode::Rich
     };
-    thread_items_to_transcript_cells(
-        Some(thread_id),
+    crate::thread_transcript::thread_items_to_transcript_cells_with_timestamps(
+        ThreadId::from_string(&thread.id).ok(),
         &thread.cwd,
         items,
         visibility,
         Some(config),
+        timestamps,
     )
     .into_iter()
     .fold(rendered_rows, |rows, cell| {

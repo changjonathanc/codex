@@ -370,6 +370,7 @@ mod rendering;
 mod replay;
 mod review;
 mod review_popups;
+mod user_message_timestamps;
 use self::review::ReviewState;
 mod safety_buffering;
 mod service_tiers;
@@ -1311,7 +1312,8 @@ impl ChatWidget {
                     mention_bindings: mention_bindings_from_user_inputs(items, &display.message),
                     pending_pastes: Vec::new(),
                 });
-            self.on_user_message_display(display);
+            let timestamp = self.turn_lifecycle.replay_user_message_timestamp_ms.take();
+            self.on_user_message_display_at(display, timestamp);
             return;
         }
 
@@ -1349,24 +1351,6 @@ impl ChatWidget {
             && self.last_rendered_user_message_display.as_ref() != Some(&display)
         {
             self.on_user_message_display(display);
-        }
-    }
-
-    fn on_user_message_display(&mut self, display: UserMessageDisplay) {
-        self.transcript.last_status_copy_targets = None;
-        self.last_rendered_user_message_display = Some(display.clone());
-        self.last_rendered_user_message_client_id = None;
-        if !display.message.trim().is_empty()
-            || !display.text_elements.is_empty()
-            || !display.local_images.is_empty()
-            || !display.remote_image_urls.is_empty()
-        {
-            self.add_to_history(history_cell::new_user_prompt(
-                display.message,
-                display.text_elements,
-                display.local_images,
-                display.remote_image_urls,
-            ));
         }
     }
 

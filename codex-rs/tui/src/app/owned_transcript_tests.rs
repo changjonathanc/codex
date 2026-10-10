@@ -25,6 +25,7 @@ use ratatui::buffer::Buffer;
 
 pub(in crate::app) fn user_cell(message: &str) -> Arc<dyn HistoryCell> {
     Arc::new(UserHistoryCell {
+        timestamp: None,
         spoken: false,
         message: message.to_string(),
         text_elements: Vec::new(),
@@ -35,6 +36,7 @@ pub(in crate::app) fn user_cell(message: &str) -> Arc<dyn HistoryCell> {
 
 pub(in crate::app) fn attach_thread(app: &mut App, thread_id: ThreadId) {
     app.chat_widget.handle_thread_session(ThreadSessionState {
+        user_message_timestamps: Default::default(),
         windows_sandbox_host: crate::app::WindowsSandboxHost::Local,
         thread_id,
         forked_from_id: None,

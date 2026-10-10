@@ -96,6 +96,7 @@ impl ChatWidget {
             self.clear_thread_usage_state();
         }
         self.turn_lifecycle.reset_thread();
+        self.turn_lifecycle.user_message_started_at_ms = session.user_message_timestamps.clone();
         self.clear_safety_buffering();
         self.thread_name = session.thread_name.clone();
         self.current_goal_status_indicator = None;

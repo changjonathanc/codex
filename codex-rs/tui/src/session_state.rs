@@ -28,6 +28,8 @@ pub(crate) struct MessageHistoryMetadata {
 
 #[derive(Debug, Clone, PartialEq)]
 pub(crate) struct ThreadSessionState {
+    /// Saved user-message times from loaded history pages, keyed by item id.
+    pub(crate) user_message_timestamps: std::collections::HashMap<String, i64>,
     pub(crate) windows_sandbox_host: crate::app::WindowsSandboxHost,
     pub(crate) thread_id: ThreadId,
     pub(crate) forked_from_id: Option<ThreadId>,

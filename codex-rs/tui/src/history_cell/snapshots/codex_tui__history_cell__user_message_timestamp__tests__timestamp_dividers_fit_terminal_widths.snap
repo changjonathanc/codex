@@ -1,0 +1,26 @@
+---
+source: tui/src/history_cell/user_message_timestamp_tests.rs
+expression: "previews.join(\"\\n\\n\")"
+---
+width 80
+──────────────────────────────── 10 Oct · 14:02 ────────────────────────────────
+
+width 48
+──────────────── 10 Oct · 14:02 ────────────────
+
+width 24
+──── 10 Oct · 14:02 ────
+
+width 18
+───── 14:02 ──────
+
+width 8
+14:02
+
+width 4
+14:0
+
+width 1
+1
+
+width 0

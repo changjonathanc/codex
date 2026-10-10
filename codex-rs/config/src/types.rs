@@ -915,6 +915,10 @@ pub struct Tui {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub final_message_color: Option<FinalMessageColor>,
 
+    /// Show local date and time dividers above user messages. Defaults to `false`.
+    #[serde(default)]
+    pub user_message_timestamps: bool,
+
     /// Pet id to preselect in the terminal pet picker.
     ///
     /// Custom pet ids resolve against CODEX_HOME/pets/<pet-id>/pet.json.

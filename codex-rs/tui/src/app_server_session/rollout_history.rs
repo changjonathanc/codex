@@ -75,7 +75,7 @@ impl AppServerSession {
                 "Showing up to 100 recent prompts and final replies. Intermediate messages and tool activity are unavailable.",
             );
         }
-        let session = thread_session_state_from_thread_response(
+        let mut session = thread_session_state_from_thread_response(
             &thread.id,
             crate::windows_sandbox::host_from_environments(thread.environments.as_deref()),
             thread.forked_from_id.clone(),
@@ -97,6 +97,10 @@ impl AppServerSession {
         )
         .await
         .map_err(color_eyre::eyre::Report::msg)?;
+        session.user_message_timestamps = self
+            .user_message_timestamps(thread_id)
+            .cloned()
+            .unwrap_or_default();
         Ok((
             AppServerStartedThread {
                 session,
@@ -234,6 +238,10 @@ impl AppServerSession {
         )
         .await?;
         started.session.fork_parent_title = fork_parent_title;
+        started.session.user_message_timestamps = self
+            .user_message_timestamps(thread_id)
+            .cloned()
+            .unwrap_or_default();
         if self.task_tools_available(thread_id) {
             self.remember_task_tool_thread(thread_id);
             started.task_tools_available = true;

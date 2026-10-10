@@ -530,6 +530,14 @@ impl ChatWidget {
         replay_kind: Option<ReplayKind>,
     ) {
         self.restore_realtime_transcripts_before_turn(&notification.turn_id);
+        if matches!(notification.item, ThreadItem::UserMessage { .. })
+            && notification.started_at_ms > 0
+        {
+            self.turn_lifecycle.user_message_started_at_ms.insert(
+                notification.item.id().to_string(),
+                notification.started_at_ms,
+            );
+        }
         match notification.item {
             ThreadItem::UserMessage { content, .. } if replay_kind.is_none() => {
                 self.note_realtime_user_item_started(&notification.turn_id, &content);

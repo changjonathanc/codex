@@ -305,6 +305,8 @@ mod terminal_title;
 #[path = "tests/tool_activity_tests.rs"]
 mod tool_activity_tests;
 mod usage;
+#[path = "tests/user_message_timestamps.rs"]
+mod user_message_timestamps;
 #[path = "tests/worktree_picker_tests.rs"]
 mod worktree_picker;
 

@@ -20,6 +20,7 @@ pub(crate) struct UserHistoryCell {
     pub local_image_paths: Vec<PathBuf>,
     pub remote_image_urls: Vec<String>,
     pub(crate) spoken: bool,
+    pub(crate) timestamp: Option<chrono::DateTime<chrono::Local>>,
 }
 
 /// Remove CSI sequences and control characters, preserving tabs and newlines.
@@ -216,7 +217,11 @@ impl HistoryCell for UserHistoryCell {
             return Vec::new();
         }
 
-        let mut lines = vec![HyperlinkLine::new(Line::from("").style(style))];
+        let mut lines = Vec::new();
+        if let Some(timestamp) = self.timestamp {
+            lines.extend(super::user_message_timestamp::divider(timestamp, width));
+        }
+        lines.push(HyperlinkLine::new(Line::from("").style(style)));
 
         if !wrapped_images.is_empty() {
             lines.extend(prefix_hyperlink_lines(
@@ -750,6 +755,7 @@ pub(crate) fn new_user_prompt(
         local_image_paths,
         remote_image_urls,
         spoken: false,
+        timestamp: None,
     }
 }
 

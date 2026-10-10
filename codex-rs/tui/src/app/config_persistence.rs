@@ -1812,6 +1812,7 @@ enabled = false
 
         app.chat_widget
             .handle_thread_session(crate::session_state::ThreadSessionState {
+                user_message_timestamps: Default::default(),
                 windows_sandbox_host: crate::app::WindowsSandboxHost::Local,
                 thread_id: ThreadId::new(),
                 forked_from_id: None,

@@ -1106,6 +1106,7 @@ mod tests {
         assert!(!has_backtrack_target(&cells));
 
         cells.push(Arc::new(UserHistoryCell {
+            timestamp: None,
             spoken: false,
             message: "hello".to_string(),
             text_elements: Vec::new(),

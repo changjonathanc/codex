@@ -89,6 +89,13 @@ impl LocalSettings {
                     .and_then(|tui| tui.get("final_message_color"))
                     .and_then(|value| value.clone().try_into().ok()),
                 pet: config.tui_pet.clone(),
+                user_message_timestamps: config
+                    .config_layer_stack
+                    .effective_config()
+                    .get("tui")
+                    .and_then(|tui| tui.get("user_message_timestamps"))
+                    .and_then(toml::Value::as_bool)
+                    .unwrap_or(false),
                 pet_anchor: config.tui_pet_anchor,
                 session_picker_view: Some(config.tui_session_picker_view),
                 resume_cwd: config.tui_resume_cwd,

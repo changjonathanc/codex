@@ -28,6 +28,8 @@ mod activity_pages;
 mod computer_groups;
 mod exploration_groups;
 mod other_items;
+mod user_message_timestamps;
+pub(crate) use user_message_timestamps::thread_items_to_transcript_cells_with_timestamps;
 pub(crate) mod tools;
 
 pub(crate) use activity_pages::fold_trailing_activity_details;
@@ -86,17 +88,33 @@ pub(crate) async fn load_session_transcript(
         )
         .await
         .map_err(std::io::Error::other)?;
-    Ok(thread_to_transcript_cells(
+    Ok(thread_to_transcript_cells_with_timestamps(
         thread,
         raw_reasoning_visibility,
         config,
+        app_server.user_message_timestamps(thread_id),
     ))
 }
 
+#[cfg(test)]
 pub(crate) fn thread_to_transcript_cells(
     thread: Thread,
     raw_reasoning_visibility: RawReasoningVisibility,
     config: Option<&Config>,
+) -> TranscriptCells {
+    thread_to_transcript_cells_with_timestamps(
+        thread,
+        raw_reasoning_visibility,
+        config,
+        /*timestamps*/ None,
+    )
+}
+
+fn thread_to_transcript_cells_with_timestamps(
+    thread: Thread,
+    raw_reasoning_visibility: RawReasoningVisibility,
+    config: Option<&Config>,
+    timestamps: Option<&std::collections::HashMap<String, i64>>,
 ) -> TranscriptCells {
     let cwd = thread.cwd;
     let thread_id = ThreadId::from_string(&thread.id).ok();
@@ -104,12 +122,33 @@ pub(crate) fn thread_to_transcript_cells(
         .turns
         .into_iter()
         .flat_map(|turn| {
-            thread_items_to_transcript_cells(
+            let mut times = turn
+                .items
+                .iter()
+                .filter_map(|item| {
+                    let id = item.id();
+                    timestamps
+                        .and_then(|times| times.get(id))
+                        .map(|timestamp| (id.to_string(), *timestamp))
+                })
+                .collect::<std::collections::HashMap<_, _>>();
+            if let Some(timestamp) = turn
+                .started_at
+                .and_then(|seconds| seconds.checked_mul(/*rhs*/ 1000))
+                && let Some(user) = turn
+                    .items
+                    .iter()
+                    .find(|item| matches!(item, ThreadItem::UserMessage { .. }))
+            {
+                times.entry(user.id().to_string()).or_insert(timestamp);
+            }
+            thread_items_to_transcript_cells_with_timestamps(
                 thread_id,
                 &cwd,
                 turn.items,
                 raw_reasoning_visibility,
                 config,
+                Some(&times),
             )
         })
         .collect::<TranscriptCells>();
@@ -259,6 +298,7 @@ fn item_to_cells(
                 item.text_elements()
             };
             cells.push(Arc::new(UserHistoryCell {
+                timestamp: None,
                 spoken: false,
                 message: reply_text.unwrap_or(message),
                 text_elements,

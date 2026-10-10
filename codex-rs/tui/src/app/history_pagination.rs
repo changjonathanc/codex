@@ -12,11 +12,17 @@ use crate::history_cell::UserHistoryCell;
 use crate::pager_overlay::TranscriptHistoryState;
 use crate::thread_transcript::RawReasoningVisibility;
 use crate::thread_transcript::thread_items_to_transcript_cells;
+use crate::thread_transcript::thread_items_to_transcript_cells_with_timestamps;
 use codex_app_server_protocol::ClientRequest;
 use codex_app_server_protocol::ThreadItemsListResponse;
 
 #[path = "history_completion.rs"]
 mod completion;
+
+struct TimestampedHistoryItems<'a> {
+    items: Vec<ThreadItem>,
+    timestamps: Option<&'a HashMap<String, i64>>,
+}
 
 impl App {
     /// Start one bounded page request shared by scrollback refill and the transcript overlay.
@@ -107,7 +113,10 @@ impl App {
         let width = tui.terminal.last_known_screen_size.width;
         self.remove_hidden_review_cells(tui, &turns, &hidden_item_ids, thread_id, &cwd, visibility);
         let cells = self.project_older_history_cells(
-            items,
+            TimestampedHistoryItems {
+                items,
+                timestamps: app_server.user_message_timestamps(thread_id),
+            },
             &turns,
             &hidden_item_ids,
             thread_id,
@@ -120,7 +129,15 @@ impl App {
         if !inserted.is_empty() {
             self.join_older_activity_group(inserted.end, &turns);
         }
-        merge_older_turns(&mut store.lock().await.turns, turns);
+        {
+            let mut store = store.lock().await;
+            if let Some(session) = &mut store.session
+                && let Some(timestamps) = app_server.user_message_timestamps(thread_id)
+            {
+                session.user_message_timestamps.extend(timestamps.clone());
+            }
+            merge_older_turns(&mut store.turns, turns);
+        }
         self.scrollback_has_older_history = app_server.has_older_history(thread_id);
         if self.backtrack.overlay_preview_active
             && self.backtrack.nth_user_message == usize::MAX
@@ -218,23 +235,25 @@ impl App {
     /// Project successful turn completion metadata after the corresponding page's final item.
     fn project_older_history_cells(
         &mut self,
-        items: Vec<ThreadItem>,
+        items: TimestampedHistoryItems<'_>,
         turns: &[Turn],
         hidden_item_ids: &HashSet<&str>,
         thread_id: ThreadId,
         cwd: &AbsolutePathBuf,
         visibility: RawReasoningVisibility,
     ) -> Vec<Arc<dyn HistoryCell>> {
+        let TimestampedHistoryItems { items, timestamps } = items;
         let mut cells = Vec::new();
         for (items, completed_turn) in completion::group_completed_turn_items(items, turns) {
             // Internal prompts stay invisible, but still separate adjacent tool groups.
             for visible in items.split(|item| hidden_item_ids.contains(item.id())) {
-                cells.extend(thread_items_to_transcript_cells(
+                cells.extend(thread_items_to_transcript_cells_with_timestamps(
                     Some(thread_id),
                     cwd,
                     visible.iter().cloned(),
                     visibility,
                     Some(&self.config),
+                    timestamps,
                 ));
             }
             if let Some(turn) = completed_turn

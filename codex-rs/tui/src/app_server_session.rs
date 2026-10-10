@@ -313,6 +313,7 @@ pub(crate) struct AppServerSession {
     client: AppServerClient,
     next_request_id: i64,
     history_pagination: HashMap<ThreadId, history::ThreadHistoryPagination>,
+    user_message_timestamps: HashMap<ThreadId, HashMap<String, i64>>,
     task_tool_threads: HashSet<ThreadId>,
     task_tool_capabilities_dir: Option<AbsolutePathBuf>,
     task_search_generation: Arc<AtomicU64>,
@@ -423,6 +424,7 @@ impl AppServerSession {
             client,
             next_request_id: 1,
             history_pagination: HashMap::new(),
+            user_message_timestamps: HashMap::new(),
             task_tool_threads: HashSet::new(),
             task_tool_capabilities_dir: None,
             task_search_generation: Arc::new(AtomicU64::new(0)),
@@ -1019,6 +1021,10 @@ impl AppServerSession {
         )
         .await?;
         started.session.fork_parent_title = fork_parent.and_then(|thread| thread.name);
+        started.session.user_message_timestamps = self
+            .user_message_timestamps(started.session.thread_id)
+            .cloned()
+            .unwrap_or_default();
         if self.task_tools_available(thread_id) {
             started.task_tools_available = true;
             self.remember_task_tool_thread(started.session.thread_id);
@@ -2428,6 +2434,7 @@ async fn thread_session_state_from_thread_response(
     );
     let (log_id, entry_count) = codex_message_history::history_metadata(&history_config).await;
     Ok(ThreadSessionState {
+        user_message_timestamps: Default::default(),
         windows_sandbox_host,
         thread_id,
         forked_from_id,

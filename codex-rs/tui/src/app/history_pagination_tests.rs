@@ -51,6 +51,7 @@ fn overlapping_history_keeps_live_turn_state_and_newer_items() {
 
 fn user_cell(message: &str) -> Arc<dyn HistoryCell> {
     Arc::new(UserHistoryCell {
+        timestamp: None,
         spoken: false,
         message: message.to_string(),
         text_elements: Vec::new(),
@@ -124,7 +125,10 @@ async fn hidden_last_item_keeps_turn_groups_and_completion_boundaries() {
             .collect::<Vec<_>>();
 
         let cells = app.project_older_history_cells(
-            items.clone(),
+            TimestampedHistoryItems {
+                items: items.clone(),
+                timestamps: None,
+            },
             &turns,
             &hidden,
             thread_id,
@@ -157,7 +161,10 @@ async fn hidden_last_item_keeps_turn_groups_and_completion_boundaries() {
         );
 
         let repeated = app.project_older_history_cells(
-            items,
+            TimestampedHistoryItems {
+                items,
+                timestamps: None,
+            },
             &turns,
             &hidden,
             thread_id,

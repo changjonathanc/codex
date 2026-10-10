@@ -180,6 +180,15 @@ impl ThreadEventStore {
     }
 
     fn push_notification_inner(&mut self, notification: Cow<'_, ServerNotification>) {
+        if let ServerNotification::ItemStarted(started) = notification.as_ref()
+            && matches!(started.item, ThreadItem::UserMessage { .. })
+            && started.started_at_ms > 0
+            && let Some(session) = &mut self.session
+        {
+            session
+                .user_message_timestamps
+                .insert(started.item.id().to_string(), started.started_at_ms);
+        }
         let user_item = match notification.as_ref() {
             ServerNotification::ItemStarted(n) => Some((&n.turn_id, &n.item)),
             ServerNotification::ItemCompleted(n) => Some((&n.turn_id, &n.item)),
@@ -661,6 +670,7 @@ mod tests {
 
     fn test_thread_session(thread_id: ThreadId, cwd: PathBuf) -> ThreadSessionState {
         ThreadSessionState {
+            user_message_timestamps: Default::default(),
             windows_sandbox_host: crate::app::WindowsSandboxHost::Local,
             thread_id,
             forked_from_id: None,

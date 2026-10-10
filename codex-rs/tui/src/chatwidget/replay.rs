@@ -155,7 +155,18 @@ impl ChatWidget {
                     _ => None,
                 });
             let mut replaying_delegation = false;
+            let mut first_user_timestamp =
+                started_at.and_then(|seconds| seconds.checked_mul(/*rhs*/ 1000));
             for item in items {
+                if matches!(item, ThreadItem::UserMessage { .. }) {
+                    self.turn_lifecycle.replay_user_message_timestamp_ms = self
+                        .turn_lifecycle
+                        .user_message_started_at_ms
+                        .get(item.id())
+                        .copied()
+                        .or_else(|| first_user_timestamp.take());
+                    first_user_timestamp = None;
+                }
                 if matches!(&item, ThreadItem::UserMessage { content, .. }
                     if realtime::realtime_delegation_input(content).is_some())
                 {
@@ -193,6 +204,7 @@ impl ChatWidget {
                     self.replay_thread_item(item, turn_id.clone(), replay_kind);
                 }
             }
+            self.turn_lifecycle.replay_user_message_timestamp_ms = None;
             let status = if hidden_nested_review_turn {
                 TurnStatus::Completed
             } else {
@@ -272,8 +284,16 @@ impl ChatWidget {
         let replay_kind = render_source.replay_kind();
         match item {
             ThreadItem::UserMessage {
-                content, client_id, ..
+                id,
+                content,
+                client_id,
             } => {
+                self.turn_lifecycle.replay_user_message_timestamp_ms = self
+                    .turn_lifecycle
+                    .user_message_started_at_ms
+                    .get(&id)
+                    .copied()
+                    .or(self.turn_lifecycle.replay_user_message_timestamp_ms);
                 if let Some(replies) = crate::async_question_reply::parse_input(&content) {
                     let ids = replies
                         .into_iter()
@@ -289,6 +309,7 @@ impl ChatWidget {
                     from_replay,
                     &turn_id,
                 );
+                self.turn_lifecycle.replay_user_message_timestamp_ms = None;
             }
             ThreadItem::AgentMessage {
                 id,
