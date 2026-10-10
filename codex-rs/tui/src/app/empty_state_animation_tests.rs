@@ -181,14 +181,6 @@ async fn empty_state_animation_preserves_header_cursor_and_footer() -> Result<()
     let size = Size::new(/*width*/ 120, /*height*/ 44);
     let mut tui = crate::tui::test_support::make_test_tui()?;
     tui.set_owned_screen(/*owned*/ true)?;
-    app.chat_widget
-        .empty_state_animation
-        .borrow()
-        .greeting
-        .set(crate::empty_state_animation::Greeting {
-            phrase: "Pull up a prompt.",
-        })
-        .expect("initial greeting");
     app.queue_clear_ui_header(&mut tui);
     app.transcript_cells
         .push(Arc::new(history_cell::StartupWarningsCell::mcp(
@@ -209,7 +201,6 @@ async fn empty_state_animation_preserves_header_cursor_and_footer() -> Result<()
     let after = crate::custom_terminal::test_support::last_rendered_buffer(&tui.terminal);
     assert!(has_blossom(&tui));
     assert_eq!(tui.terminal.last_known_cursor_pos, cursor);
-    assert!(text(&before).contains("Pull up a prompt."));
     assert_eq!(
         &after.content[after.index_of(/*x*/ 0, before_bottom.y)..],
         &before.content[before.index_of(/*x*/ 0, before_bottom.y)..]
@@ -222,14 +213,6 @@ async fn empty_state_animation_preserves_header_cursor_and_footer() -> Result<()
             text(&before)
         )
     );
-    // Editing, clearing, and resizing must never choose another phrase.
-    let phrase_pos = after
-        .content
-        .iter()
-        .position(|cell| cell.symbol() == "P")
-        .expect("the phrase is visible above the composer");
-    assert_eq!(after.content[phrase_pos].fg, crate::style::accent_color());
-
     let short = Size::new(/*width*/ 120, /*height*/ 12);
     draw(&mut app, &mut tui, short)?;
     assert!(!has_blossom(&tui));
@@ -242,12 +225,6 @@ async fn empty_state_animation_preserves_header_cursor_and_footer() -> Result<()
     app.chat_widget.apply_external_edit(String::new());
     draw(&mut app, &mut tui, size)?;
     assert!(has_blossom(&tui));
-    assert!(
-        text(crate::custom_terminal::test_support::last_rendered_buffer(
-            &tui.terminal
-        ))
-        .contains("Pull up a prompt.")
-    );
     assert_eq!(app.transcript_cells.len(), history_len);
     app.local_settings.tui.animations = false;
     draw(&mut app, &mut tui, size)?;
@@ -269,7 +246,7 @@ async fn empty_state_animation_preserves_header_cursor_and_footer() -> Result<()
 }
 
 #[tokio::test]
-async fn submitting_a_draft_keeps_greeting_and_dismisses_logo_even_after_clear() -> Result<()> {
+async fn submitting_a_draft_dismisses_logo_even_after_clear() -> Result<()> {
     let (mut app, _events, _ops) = crate::app::tests::make_test_app_with_channels().await;
     app.local_settings.tui.animations = true;
     let size = Size::new(/*width*/ 120, /*height*/ 44);
@@ -282,20 +259,12 @@ async fn submitting_a_draft_keeps_greeting_and_dismisses_logo_even_after_clear()
         .start_fresh();
     draw(&mut app, &mut tui, size)?;
     assert!(has_blossom(&tui));
-    let greeting = *app
-        .chat_widget
-        .empty_state_animation
-        .borrow()
-        .greeting
-        .get()
-        .expect("choose a greeting for the fresh thread");
     app.chat_widget
         .apply_external_edit("first prompt".to_string());
     draw(&mut app, &mut tui, size)?;
     let drafting = crate::custom_terminal::test_support::last_rendered_buffer(&tui.terminal);
     assert!(!has_blossom(&tui));
     assert!(text(drafting).contains("first prompt"));
-    assert!(text(drafting).contains(greeting.phrase));
     app.chat_widget.apply_external_edit(String::new());
     draw(&mut app, &mut tui, size)?;
     assert!(has_blossom(&tui));
@@ -305,14 +274,10 @@ async fn submitting_a_draft_keeps_greeting_and_dismisses_logo_even_after_clear()
         .handle_key_event(KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE));
     draw(&mut app, &mut tui, size)?;
     assert!(!has_blossom(&tui));
-    let submitted = crate::custom_terminal::test_support::last_rendered_buffer(&tui.terminal);
-    assert_eq!(text(submitted).matches(greeting.phrase).count(), 1);
-    // The header is also stable when it scrolls out and back into the viewport.
+    // A viewport resize must not bring the blossom back.
     let short = Size::new(/*width*/ 120, /*height*/ 8);
     draw(&mut app, &mut tui, short)?;
     draw(&mut app, &mut tui, size)?;
-    let restored = crate::custom_terminal::test_support::last_rendered_buffer(&tui.terminal);
-    assert!(text(restored).contains(greeting.phrase));
     assert!(!has_blossom(&tui));
     app.reset_transcript_state_after_clear();
     draw(&mut app, &mut tui, size)?;
@@ -322,7 +287,7 @@ async fn submitting_a_draft_keeps_greeting_and_dismisses_logo_even_after_clear()
 }
 
 #[tokio::test]
-async fn empty_state_animation_survives_plain_transcript_clicks() -> Result<()> {
+async fn empty_state_animation_survives_empty_transcript_clicks() -> Result<()> {
     use crossterm::event::MouseButton;
     use crossterm::event::MouseEvent;
     use crossterm::event::MouseEventKind;
@@ -343,8 +308,8 @@ async fn empty_state_animation_survives_plain_transcript_clicks() -> Result<()> 
         (MouseEventKind::Down(MouseButton::Left), 4, true),
         (MouseEventKind::Up(MouseButton::Left), 4, true),
         (MouseEventKind::Down(MouseButton::Left), 7, true),
-        (MouseEventKind::Drag(MouseButton::Left), 18, false),
-        (MouseEventKind::Up(MouseButton::Left), 18, false),
+        (MouseEventKind::Drag(MouseButton::Left), 18, true),
+        (MouseEventKind::Up(MouseButton::Left), 18, true),
     ] {
         app.transcript_view.handle_mouse(
             MouseEvent {
@@ -361,17 +326,6 @@ async fn empty_state_animation_survives_plain_transcript_clicks() -> Result<()> 
             assert_eq!(tui.terminal.last_known_cursor_pos, cursor);
         }
     }
-    assert!(
-        app.transcript_view
-            .selected_text(&app.transcript_cells)
-            .is_some()
-    );
-    app.transcript_view.end_selection(&app.transcript_cells);
-    draw(&mut app, &mut tui, size)?;
-    assert!(!has_blossom(&tui));
-    app.transcript_view.jump_to_latest();
-    draw(&mut app, &mut tui, size)?;
-    assert!(has_blossom(&tui));
     tui.set_owned_screen(/*owned*/ false)?;
     Ok(())
 }

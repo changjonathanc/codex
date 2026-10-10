@@ -1,12 +1,7 @@
 //! Session headers, onboarding guidance, and transcript cards.
 
-use std::sync::Arc;
-use std::sync::OnceLock;
-
 use super::*;
-use crate::empty_state_animation::Greeting;
 use crate::line_truncation::line_width;
-use crate::line_truncation::truncate_line_with_ellipsis_if_overflow;
 use crate::style::accent_color;
 use crate::width::display_width;
 
@@ -44,7 +39,7 @@ pub(crate) fn with_border_with_inner_width(
     out
 }
 
-/// Brand title shared by the session header and the status card; each owns its own indentation.
+/// Brand title for the status card; the caller controls indentation.
 pub(crate) fn codex_title(version: &str) -> Vec<Span<'static>> {
     vec![
         ">_ ".fg(accent_color()),
@@ -110,17 +105,6 @@ impl HistoryCell for SessionNoticeCell {
 #[derive(Debug)]
 pub struct SessionInfoCell(CompositeHistoryCell);
 
-/// Bind provisional and configured banners to the thread's chosen greeting.
-pub(crate) fn set_session_greeting(cell: &mut dyn HistoryCell, greeting: &Arc<OnceLock<Greeting>>) {
-    if let Some(header) = cell.as_any_mut().downcast_mut::<SessionHeaderHistoryCell>() {
-        header.greeting = Arc::clone(greeting);
-    } else if let Some(info) = cell.as_any_mut().downcast_mut::<SessionInfoCell>() {
-        for part in &mut info.0.parts {
-            set_session_greeting(part.as_mut(), greeting);
-        }
-    }
-}
-
 /// Fullscreen transcript presentation omits tips; scrollback retains the original cells.
 pub(crate) fn fullscreen_session_lines(
     cell: &dyn HistoryCell,
@@ -151,6 +135,10 @@ pub(crate) fn fullscreen_session_lines(
 }
 
 impl HistoryCell for SessionInfoCell {
+    fn live_raw_lines(&self) -> Vec<Line<'static>> {
+        self.0.live_raw_lines()
+    }
+
     fn compact_hyperlink_lines(&self, width: u16) -> Vec<HyperlinkLine> {
         self.0.compact_hyperlink_lines(width)
     }
@@ -195,7 +183,7 @@ pub(crate) fn new_session_info(
     auth_plan: Option<PlanType>,
     show_fast_status: bool,
 ) -> SessionInfoCell {
-    // Header rendered as history (so it appears at the very top).
+    // Retain session metadata without a visible startup header.
     let header = SessionHeaderHistoryCell::new(
         model_display_name.to_string(),
         session.reasoning_effort.clone(),
@@ -209,7 +197,7 @@ pub(crate) fn new_session_info(
     let mut parts: Vec<Box<dyn HistoryCell>> = vec![Box::new(header)];
 
     if is_first_event {
-        // Help lines below the header (new copy and list)
+        // First-session help and commands.
         let help_lines: Vec<Line<'static>> = vec![
             "  To get started, describe a task or try one of these commands:"
                 .dim()
@@ -287,7 +275,7 @@ pub(crate) fn has_yolo_permissions(
                 }
         )
 }
-/// Session banner with a model label already resolved for presentation by its caller.
+/// Retained session metadata with no visible startup banner.
 #[derive(Debug)]
 pub(crate) struct SessionHeaderHistoryCell {
     version: &'static str,
@@ -295,7 +283,6 @@ pub(crate) struct SessionHeaderHistoryCell {
     reasoning_effort: Option<ReasoningEffortConfig>,
     directory: PathBuf,
     yolo_mode: bool,
-    greeting: Arc<OnceLock<Greeting>>,
 }
 
 impl SessionHeaderHistoryCell {
@@ -311,7 +298,6 @@ impl SessionHeaderHistoryCell {
             reasoning_effort,
             directory,
             yolo_mode: false,
-            greeting: Default::default(),
         }
     }
 
@@ -355,46 +341,15 @@ impl SessionHeaderHistoryCell {
 }
 
 impl HistoryCell for SessionHeaderHistoryCell {
-    fn display_lines(&self, width: u16) -> Vec<Line<'static>> {
-        let width = usize::from(width);
-        let mut title = vec!["  ".into()];
-        title.extend(codex_title(self.version));
-        let mut lines = vec![
-            Line::default(),
-            Line::from(title),
-            Line::from(vec![
-                "     ".into(),
-                self.format_directory(Some(width.saturating_sub(/*rhs*/ 5)))
-                    .dim(),
-            ]),
-        ];
-        if self.yolo_mode {
-            lines.push(Line::from(vec![
-                "  permissions: ".dim(),
-                "YOLO mode".magenta().bold(),
-            ]));
-        }
-        if let Some(greeting) = self.greeting.get() {
-            // The tip/help that follows has its own normal composite separator.
-            lines.extend([
-                Line::default(),
-                Line::from(vec!["  ".into(), greeting.phrase.fg(accent_color())]),
-            ]);
-        }
-        lines
-            .into_iter()
-            .map(|line| truncate_line_with_ellipsis_if_overflow(line, width))
-            .collect()
+    fn display_lines(&self, _width: u16) -> Vec<Line<'static>> {
+        Vec::new()
+    }
+
+    fn live_raw_lines(&self) -> Vec<Line<'static>> {
+        Vec::new()
     }
 
     fn raw_lines(&self) -> Vec<Line<'static>> {
-        if self.greeting.get().is_some() {
-            return self
-                .display_lines(u16::MAX)
-                .into_iter()
-                .map(|line| Line::from(line.to_string()))
-                .collect();
-        }
         let mut lines = vec![
             Line::from(format!("OpenAI Codex (v{})", self.version)),
             Line::from(format!(

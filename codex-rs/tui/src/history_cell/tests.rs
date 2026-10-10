@@ -6,7 +6,6 @@ use crate::exec_cell::ExecCall;
 use crate::exec_cell::ExecCell;
 use crate::legacy_core::config::Config;
 use crate::legacy_core::config::ConfigBuilder;
-use crate::line_truncation::line_width;
 use crate::render::highlight::MAX_HIGHLIGHT_LINE_BYTES;
 use crate::session_state::ThreadSessionState;
 use crate::wrapping::word_wrap_lines;
@@ -1847,60 +1846,6 @@ fn completed_mcp_tool_call_multiple_outputs_inline_snapshot() {
     let rendered = render_lines(&cell.display_lines(/*width*/ 120)).join("\n");
 
     insta::assert_snapshot!(rendered);
-}
-
-#[test]
-fn session_header_clamps_to_narrow_width() {
-    const WIDTH: u16 = 44;
-    let cell = SessionHeaderHistoryCell::new(
-        "gpt-5.6-sol".to_string(),
-        Some(ReasoningEffortConfig::XHigh),
-        PathBuf::from("project"),
-        "test",
-    )
-    .with_yolo_mode(/*yolo_mode*/ true);
-
-    let lines = cell.display_lines(WIDTH);
-    let widths = lines.iter().map(line_width).collect::<Vec<_>>();
-
-    assert!(widths.iter().all(|width| *width <= usize::from(WIDTH)));
-    insta::assert_snapshot!(render_lines(&lines).join("\n"));
-}
-
-#[test]
-#[cfg_attr(
-    target_os = "windows",
-    ignore = "snapshot path rendering differs on Windows"
-)]
-fn session_header_indicates_yolo_mode() {
-    let cell = SessionHeaderHistoryCell::new(
-        "gpt-5".to_string(),
-        /*reasoning_effort*/ None,
-        test_path_buf("/tmp/project").abs().to_path_buf(),
-        "test",
-    )
-    .with_yolo_mode(/*yolo_mode*/ true);
-
-    let rendered = render_lines(&cell.display_lines(/*width*/ 80)).join("\n");
-    insta::assert_snapshot!(rendered);
-}
-
-#[test]
-fn session_header_truncates_halfwidth_directory() {
-    let cell: Box<dyn HistoryCell> = Box::new(SessionHeaderHistoryCell::new(
-        "gpt-5".to_string(),
-        /*reasoning_effort*/ None,
-        PathBuf::from("ｶﾞﾊﾟｶﾞﾊﾟｶﾞﾊﾟｶﾞﾊﾟｶﾞﾊﾟｶﾞﾊﾟｶﾞﾊﾟｶﾞﾊﾟ-project"),
-        "test",
-    ));
-
-    let width = 42;
-    let height = cell.desired_height(width);
-    let area = Rect::new(0, 0, width, height);
-    let mut buf = Buffer::empty(area);
-    cell.render(area, &mut buf);
-
-    insta::assert_snapshot!("session_header_halfwidth_directory", format!("{buf:?}"));
 }
 
 #[test]
