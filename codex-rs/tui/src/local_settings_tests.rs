@@ -8,6 +8,32 @@ use codex_terminal_detection::Multiplexer;
 use pretty_assertions::assert_eq;
 
 #[tokio::test]
+async fn user_message_timestamps_load_from_config_and_default_to_off() -> anyhow::Result<()> {
+    for (setting, expected) in [
+        ("", false),
+        ("user_message_timestamps = true", true),
+        ("user_message_timestamps = false", false),
+    ] {
+        let home = tempfile::tempdir()?;
+        std::fs::write(
+            home.path().join("config.toml"),
+            format!("[tui]\n{setting}\n"),
+        )?;
+        let config = ConfigBuilder::default()
+            .codex_home(home.path().to_path_buf())
+            .loader_overrides(LoaderOverrides::without_managed_config_for_tests())
+            .build()
+            .await?;
+        let local = LocalSettings::from(&config);
+        assert_eq!(local.tui.user_message_timestamps, expected);
+        let typed: codex_config::config_toml::ConfigToml =
+            toml::from_str(&format!("[tui]\n{setting}\n"))?;
+        assert_eq!(typed.tui.unwrap().user_message_timestamps, expected);
+    }
+    Ok(())
+}
+
+#[tokio::test]
 async fn final_message_color_loads_from_the_user_config_file() -> anyhow::Result<()> {
     let home = tempfile::tempdir()?;
     std::fs::write(

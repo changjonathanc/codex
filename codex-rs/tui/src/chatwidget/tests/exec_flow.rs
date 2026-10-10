@@ -1294,6 +1294,7 @@ async fn bang_shell_enter_while_task_running_submits_run_user_shell_command() {
     let rollout_file = NamedTempFile::new().unwrap();
     let configured = crate::session_state::ThreadSessionState {
         daybreak_enabled: false,
+        user_message_timestamps: Default::default(),
         windows_sandbox_host: crate::app::WindowsSandboxHost::Local,
         thread_id,
         forked_from_id: None,

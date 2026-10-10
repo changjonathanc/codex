@@ -83,11 +83,13 @@ impl App {
                 // thread-scoped state from the currently active session.
                 session.collaboration_mode = None;
                 session.daybreak_enabled = false;
+                session.user_message_timestamps.clear();
             }
             session
         } else {
             ThreadSessionState {
                 daybreak_enabled: false,
+                user_message_timestamps: Default::default(),
                 windows_sandbox_host: crate::app::WindowsSandboxHost::Local,
                 thread_id,
                 forked_from_id: None,
@@ -174,6 +176,7 @@ mod tests {
     fn test_thread_session(thread_id: ThreadId, cwd: PathBuf) -> ThreadSessionState {
         ThreadSessionState {
             daybreak_enabled: false,
+            user_message_timestamps: Default::default(),
             windows_sandbox_host: crate::app::WindowsSandboxHost::Local,
             thread_id,
             forked_from_id: None,

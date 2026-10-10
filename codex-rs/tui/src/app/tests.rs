@@ -6221,6 +6221,7 @@ async fn render_clear_ui_header_after_long_transcript_for_snapshot() -> String {
 
     let user_cell = |text: &str| -> Arc<dyn HistoryCell> {
         Arc::new(UserHistoryCell {
+            timestamp: None,
             spoken: false,
             message: text.to_string(),
             text_elements: Vec::new(),
@@ -6237,6 +6238,7 @@ async fn render_clear_ui_header_after_long_transcript_for_snapshot() -> String {
     let make_header = |is_first| -> Arc<dyn HistoryCell> {
         let session = ThreadSessionState {
             daybreak_enabled: false,
+            user_message_timestamps: Default::default(),
             windows_sandbox_host: crate::app::WindowsSandboxHost::Local,
             thread_id: ThreadId::new(),
             forked_from_id: None,
@@ -6860,6 +6862,7 @@ async fn replace_goal_confirmation_snapshot() {
 pub(super) fn test_thread_session(thread_id: ThreadId, cwd: PathBuf) -> ThreadSessionState {
     ThreadSessionState {
         daybreak_enabled: false,
+        user_message_timestamps: Default::default(),
         windows_sandbox_host: crate::app::WindowsSandboxHost::Local,
         thread_id,
         forked_from_id: None,
@@ -7944,6 +7947,7 @@ async fn backtrack_selection_preserves_selected_prompt_and_requests_branch() {
                      remote_image_urls: Vec<String>|
      -> Arc<dyn HistoryCell> {
         Arc::new(UserHistoryCell {
+            timestamp: None,
             spoken: false,
             message: text.to_string(),
             text_elements,
@@ -7961,6 +7965,7 @@ async fn backtrack_selection_preserves_selected_prompt_and_requests_branch() {
     let make_header = |is_first| {
         let session = ThreadSessionState {
             daybreak_enabled: false,
+            user_message_timestamps: Default::default(),
             windows_sandbox_host: crate::app::WindowsSandboxHost::Local,
             thread_id: ThreadId::new(),
             forked_from_id: None,
@@ -8034,6 +8039,7 @@ async fn backtrack_selection_preserves_selected_prompt_and_requests_branch() {
     app.chat_widget
         .handle_thread_session(crate::session_state::ThreadSessionState {
             daybreak_enabled: false,
+            user_message_timestamps: Default::default(),
             windows_sandbox_host: crate::app::WindowsSandboxHost::Local,
             thread_id: base_id,
             forked_from_id: None,
@@ -9352,6 +9358,7 @@ async fn new_session_requests_shutdown_for_previous_conversation() {
         let thread_id = ThreadId::new();
         let event = crate::session_state::ThreadSessionState {
             daybreak_enabled: false,
+            user_message_timestamps: Default::default(),
             windows_sandbox_host: crate::app::WindowsSandboxHost::Local,
             thread_id,
             forked_from_id: None,
@@ -10130,6 +10137,7 @@ async fn clear_only_ui_reset_preserves_chat_session_state() {
     app.chat_widget
         .handle_thread_session(crate::session_state::ThreadSessionState {
             daybreak_enabled: false,
+            user_message_timestamps: Default::default(),
             windows_sandbox_host: crate::app::WindowsSandboxHost::Local,
             thread_id,
             forked_from_id: None,
@@ -10154,6 +10162,7 @@ async fn clear_only_ui_reset_preserves_chat_session_state() {
     app.chat_widget
         .apply_external_edit("draft prompt".to_string());
     app.transcript_cells = vec![Arc::new(UserHistoryCell {
+        timestamp: None,
         spoken: false,
         message: "old message".to_string(),
         text_elements: Vec::new(),
