@@ -1,0 +1,24 @@
+---
+source: tui/src/history_cell/final_message_tests.rs
+expression: "previews.join(\"\\n\\n\")"
+---
+width 1
+─
+a
+|
+b
+
+width 2
+──
+a
+|
+b
+
+width 3
+───
+a |
+b
+
+width 5
+─────
+a | b

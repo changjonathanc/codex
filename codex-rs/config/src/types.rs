@@ -973,7 +973,7 @@ pub struct Tui {
     #[serde(default)]
     pub theme: Option<String>,
 
-    /// Final-answer left rail color in #RRGGBB format.
+    /// Final-answer top separator color in #RRGGBB format.
     /// When unset, uses the terminal's ANSI magenta color.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub final_message_color: Option<FinalMessageColor>,

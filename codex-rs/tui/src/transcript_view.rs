@@ -705,3 +705,7 @@ mod markdown_copy_tests;
 #[cfg(test)]
 #[path = "transcript_view/copy_on_select_tests.rs"]
 mod copy_on_select_tests;
+
+#[cfg(test)]
+#[path = "transcript_view/final_message_copy_tests.rs"]
+mod final_message_copy_tests;

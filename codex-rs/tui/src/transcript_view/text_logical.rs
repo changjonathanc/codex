@@ -29,7 +29,9 @@ pub(super) fn logical_lines(lines: &[HyperlinkLine]) -> Vec<LogicalLine> {
             .clone()
             .unwrap_or_else(|| LogicalLineSource::from_line(&line.line));
         let previous = logical.last_mut().filter(|previous| {
-            Arc::ptr_eq(&previous.origin.text, &source.text)
+            source.decoration.is_none()
+                && previous.origin.decoration.is_none()
+                && Arc::ptr_eq(&previous.origin.text, &source.text)
                 && previous.origin.range.end <= source.range.start
         });
         match previous {
@@ -43,8 +45,12 @@ pub(super) fn logical_lines(lines: &[HyperlinkLine]) -> Vec<LogicalLine> {
                     right_reserve: source.right_reserve,
                     origin: source.clone(),
                 };
-                entry.origin.range.end = source.range.start;
-                entry.append(line, source);
+                if source.decoration.is_some() {
+                    entry.line = line.clone();
+                } else {
+                    entry.origin.range.end = source.range.start;
+                    entry.append(line, source);
+                }
                 logical.push(entry);
             }
         }

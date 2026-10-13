@@ -614,9 +614,13 @@ impl AgentMarkdownCell {
         list_spacing: crate::markdown_render::ListSpacing,
     ) -> Vec<HyperlinkLine> {
         let render = || {
-            let Some(wrap_width) =
-                crate::width::usable_content_width_u16(width, /*reserved_cols*/ 2)
+            // Final answers have no body gutter; ordinary messages keep their bullet prefix.
+            let reserved_cols = if self.final_answer { 0 } else { 2 };
+            let Some(wrap_width) = crate::width::usable_content_width_u16(width, reserved_cols)
             else {
+                if self.final_answer {
+                    return Vec::new();
+                }
                 return prefix_hyperlink_lines(
                     vec![HyperlinkLine::new(Line::default())],
                     "• ".dim(),
@@ -624,8 +628,7 @@ impl AgentMarkdownCell {
                 );
             };
 
-            // Re-render markdown from source at the current width. Reserve 2 columns for the "• " /
-            // " " prefix prepended below.
+            // Re-render markdown from source at the current body width.
             let lines = crate::markdown::render_markdown_agent_with_list_spacing(
                 &self.markdown_source,
                 Some(wrap_width),

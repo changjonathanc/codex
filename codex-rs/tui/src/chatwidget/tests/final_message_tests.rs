@@ -61,10 +61,13 @@ async fn final_message_phase_survives_live_completion_and_replay() {
             }
             assert_eq!(completed.len(), 1);
             let text = lines_to_single_string(&completed[0]);
-            assert!(text.contains("The final result."));
             assert_eq!(
-                text.lines().any(|line| line.starts_with("┃ ")),
-                phase == Some(MessagePhase::FinalAnswer)
+                text,
+                if phase == Some(MessagePhase::FinalAnswer) {
+                    format!("{}\nThe final result.\n", "─".repeat(/*n*/ 48))
+                } else {
+                    "• The final result.\n".to_string()
+                }
             );
         }
     }
@@ -98,7 +101,7 @@ async fn final_message_color_is_used_for_replay() {
         .collect();
     assert_eq!(completed.len(), 1);
     assert_eq!(
-        completed[0][0].spans[0].style.fg,
+        completed[0][0].style.fg,
         Some(history_cell::final_message_color(Some(color)))
     );
 }
