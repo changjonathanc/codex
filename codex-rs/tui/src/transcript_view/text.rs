@@ -173,8 +173,14 @@ impl TextLayout {
 
     /// Source text between adjacent retained fragments; distinct logical lines have a hard break.
     pub(super) fn separator_after(&self, next: &Self) -> &str {
-        if let Some(previous) = self.logical.last()
-            && let Some(next) = next.logical.first()
+        if let Some(previous) = self
+            .logical
+            .iter()
+            .rfind(|line| line.origin.decoration.is_none())
+            && let Some(next) = next
+                .logical
+                .iter()
+                .find(|line| line.origin.decoration.is_none())
             && std::sync::Arc::ptr_eq(&previous.origin.text, &next.origin.text)
             && let Some(gap) = previous
                 .origin
@@ -194,7 +200,12 @@ impl TextLayout {
         output: &mut Vec<crate::markdown_copy::SelectedLine>,
     ) {
         let mut offset = 0;
-        for (index, line) in self.logical.iter().enumerate() {
+        for (index, line) in self
+            .logical
+            .iter()
+            .filter(|line| line.origin.decoration.is_none())
+            .enumerate()
+        {
             let end = offset + line.origin.range.len();
             if range.start <= end && range.end >= offset {
                 let selected = line.origin.range.start + range.start.saturating_sub(offset)
@@ -374,10 +385,24 @@ impl TextLayout {
         let width = width.max(/*other*/ 1);
         let mut text = String::new();
         let mut rows = Vec::new();
-        for (index, line) in logical.iter().enumerate() {
-            if index > 0 {
+        let mut has_content = false;
+        for line in &logical {
+            if let Some(decoration) = line.origin.decoration {
+                rows.push(TextRow {
+                    line: HyperlinkLine::new(decoration.render(width).style(line.line.line.style)),
+                    source: text.len()..text.len(),
+                    line_end: None,
+                    content_width: width,
+                    first_column: 0,
+                    prefix_columns: 0,
+                    tabs: tabs::TabStops::default(),
+                });
+                continue;
+            }
+            if has_content {
                 text.push('\n');
             }
+            has_content = true;
             let start = text.len();
             text.extend(
                 line.line

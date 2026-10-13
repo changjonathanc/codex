@@ -1,4 +1,4 @@
-//! Validated RGB color for the final-answer left rail.
+//! Validated RGB color for the final-answer top separator.
 
 use schemars::JsonSchema;
 use schemars::r#gen::SchemaGenerator;

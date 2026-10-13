@@ -1,11 +1,12 @@
-//! Terminal-only treatments for completed final answers. Markdown and links stay intact.
+//! Final-answer top separators. Markdown, links and selectable source text stay intact.
 
 use codex_config::types::FinalMessageColor;
 use ratatui::style::Color;
 use ratatui::style::Stylize;
 
 use crate::terminal_hyperlinks::HyperlinkLine;
-use crate::terminal_hyperlinks::prefix_hyperlink_lines;
+use crate::terminal_hyperlinks::LineDecoration;
+use crate::terminal_hyperlinks::LogicalLineSource;
 use crate::terminal_hyperlinks::remap_source_wrapped_line;
 use crate::wrapping::RtOptions;
 use crate::wrapping::word_wrap_line_with_source;
@@ -18,12 +19,25 @@ pub(crate) fn configured_color(setting: Option<FinalMessageColor>) -> Color {
 }
 
 pub(crate) fn render(lines: Vec<HyperlinkLine>, width: u16, color: Color) -> Vec<HyperlinkLine> {
+    if width == 0 || lines.is_empty() {
+        return Vec::new();
+    }
     // Markdown can keep a long URL on one row. Break only oversized rows so a final
-    // answer, including its border, fits without clipping. OSC 8 targets remain intact.
-    let body_width = usize::from(width.saturating_sub(2)).max(1);
-    let lines = lines
-        .into_iter()
-        .flat_map(|line| {
+    // answer fits without clipping. OSC 8 targets and copy provenance remain intact.
+    let body_width = usize::from(width);
+    let decoration = LineDecoration::HorizontalRule;
+    // Owned transcript selection excludes this row by metadata. Native terminal selection
+    // still sees its screen cells, so the answer body must remain free of decoration.
+    let separator = HyperlinkLine {
+        line: decoration.render(width).fg(color),
+        source: Some(LogicalLineSource {
+            decoration: Some(decoration),
+            ..LogicalLineSource::new(String::new())
+        }),
+        ..Default::default()
+    };
+    std::iter::once(separator)
+        .chain(lines.into_iter().flat_map(|line| {
             if line.width() <= body_width {
                 vec![line]
             } else {
@@ -37,7 +51,6 @@ pub(crate) fn render(lines: Vec<HyperlinkLine>, width: u16, color: Color) -> Vec
                     ),
                 )
             }
-        })
-        .collect();
-    prefix_hyperlink_lines(lines, "┃ ".fg(color), "┃ ".fg(color))
+        }))
+        .collect()
 }

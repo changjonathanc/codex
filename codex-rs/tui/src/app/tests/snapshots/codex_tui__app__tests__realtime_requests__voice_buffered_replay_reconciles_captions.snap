@@ -1,6 +1,5 @@
 ---
 source: tui/src/app/tests/realtime_requests.rs
-assertion_line: 889
 expression: "normalize_voice_snapshot_directory(&rendered, &app.config.cwd)"
 ---
   To get started, describe a task or try one of these commands:
@@ -13,4 +12,5 @@ expression: "normalize_voice_snapshot_directory(&rendered, &app.config.cwd)"
 
 › buffered question
 
-┃ buffered answer
+────────────────────────────────────────────────────────────────────────────────
+buffered answer

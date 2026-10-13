@@ -6,6 +6,20 @@ use ratatui::text::Span;
 use std::ops::Range;
 use std::sync::Arc;
 
+/// A presentation-only row, regenerated at the current width and excluded from source text.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub(crate) enum LineDecoration {
+    HorizontalRule,
+}
+
+impl LineDecoration {
+    pub(crate) fn render(self, width: u16) -> Line<'static> {
+        match self {
+            Self::HorizontalRule => "─".repeat(usize::from(width)).into(),
+        }
+    }
+}
+
 /// Wrapping policy of an existing display renderer.
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
 pub(crate) enum LineWrapPolicy {
@@ -22,6 +36,9 @@ pub(crate) enum LineWrapPolicy {
 /// the fragment, so selection never has to infer whether a gutter belongs to the source.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub(crate) struct LogicalLineSource {
+    /// Explicit decoration metadata; never infer this from the displayed characters.
+    /// Decorative rows have empty source text. Literal rules in an answer remain content.
+    pub(crate) decoration: Option<LineDecoration>,
     pub(crate) text: Arc<str>,
     pub(crate) copy: Option<Arc<crate::markdown_copy::CopyLine>>,
     /// Literal user text remains prose when copied alongside rendered Markdown.
@@ -44,6 +61,7 @@ impl LogicalLineSource {
     pub(crate) fn new(text: String) -> Self {
         let end = text.len();
         Self {
+            decoration: None,
             text: text.into(),
             copy: None,
             copy_as_prose: false,
@@ -104,6 +122,7 @@ impl LogicalLineSource {
         let start = displayed.start.clamp(source_start, source_end);
         let end = displayed.end.clamp(source_start, source_end);
         Self {
+            decoration: self.decoration,
             text: Arc::clone(&self.text),
             copy: self.copy.clone(),
             copy_as_prose: self.copy_as_prose,

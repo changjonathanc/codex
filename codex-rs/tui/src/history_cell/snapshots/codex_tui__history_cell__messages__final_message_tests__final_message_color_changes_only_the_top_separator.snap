@@ -1,0 +1,14 @@
+---
+source: tui/src/history_cell/final_message_tests.rs
+expression: "actual[..2]"
+---
+[
+    HyperlinkLine {
+        line: Line::from("────────────────────────────────────────────────").fg(Color::Rgb(137, 180, 250)),
+        hyperlinks: [],
+    },
+    HyperlinkLine {
+        line: Line::from("Updated the final-message display."),
+        hyperlinks: [],
+    },
+]

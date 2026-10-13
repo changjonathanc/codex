@@ -1,6 +1,5 @@
 ---
 source: tui/src/app/tests/realtime_requests.rs
-assertion_line: 1093
 expression: "normalize_voice_snapshot_directory(&rendered, &app.config.cwd)"
 ---
   To get started, describe a task or try one of these commands:
@@ -10,7 +9,8 @@ expression: "normalize_voice_snapshot_directory(&rendered, &app.config.cwd)"
   /permissions - choose what Codex is allowed to do
   /model - choose what model and reasoning effort to use
   /review - review any changes and find issues
-┃ Earlier answer
+────────────────────────────────────────────────────────────────────────────────
+Earlier answer
 • spoken complete
 
 › Later typed question

@@ -26,12 +26,12 @@ async fn final_message_color_is_used_for_live_consolidation() -> Result<()> {
     assert_eq!(app.transcript_cells.len(), 1);
     let lines = app.transcript_cells[0].display_lines(/*width*/ 48);
     assert_eq!(
-        lines[0].spans[0].style.fg,
+        lines[0].style.fg,
         Some(history_cell::final_message_color(Some(color)))
     );
     assert_eq!(
         ratatui::text::Text::from(lines).to_string(),
-        "┃ Colored result."
+        format!("{}\nColored result.", "─".repeat(/*n*/ 48))
     );
     Ok(())
 }

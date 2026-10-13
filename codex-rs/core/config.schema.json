@@ -4420,7 +4420,7 @@
               "$ref": "#/definitions/FinalMessageColor"
             }
           ],
-          "description": "Final-answer left rail color in #RRGGBB format. When unset, uses the terminal's ANSI magenta color."
+          "description": "Final-answer top separator color in #RRGGBB format. When unset, uses the terminal's ANSI magenta color."
         },
         "fullscreen_transcript": {
           "default": true,

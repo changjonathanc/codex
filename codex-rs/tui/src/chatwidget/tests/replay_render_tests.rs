@@ -32,8 +32,10 @@ async fn completed_replay_preserves_messages_and_draft_across_reconstruction() {
     › Question
 
 
-    ┃ First answer
+    ────────────────────────────────────────────────────────────────────────────────
+    First answer
 
-    ┃ Second answer
+    ────────────────────────────────────────────────────────────────────────────────
+    Second answer
     ");
 }
