@@ -1,9 +1,16 @@
 ---
 source: tui/src/startup_draft_tests.rs
-assertion_line: 148
+assertion_line: 144
 expression: "snapshots.join(\"\\n---\\n\")"
 ---
 empty (48 columns):
+
+
+› Ask Codex to do anything
+
+  ? for shortcuts
+---
+configured (48 columns):
 
 
 › Ask Codex to do anything

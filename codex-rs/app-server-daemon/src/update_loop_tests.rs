@@ -821,6 +821,7 @@ async fn scheduled_no_op_preserves_daemon_and_hands_off_stale_updater() {
     ));
 
     let outcome = super::update_once(
+        UpdateSource::OfficialInstaller,
         &no_op,
         &daemon,
         &executable_identity_from_reader(&b"stale updater"[..]).expect("updater identity"),
@@ -868,6 +869,7 @@ async fn scheduled_resource_only_update_restarts_daemon() {
     ));
 
     let outcome = super::update_once(
+        UpdateSource::OfficialInstaller,
         &installer,
         &daemon,
         &executable_identity(&daemon.managed_codex_bin)

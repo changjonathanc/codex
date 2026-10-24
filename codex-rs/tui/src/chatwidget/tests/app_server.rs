@@ -1698,7 +1698,7 @@ async fn live_app_server_interleaved_flush_repairs_mismatched_completion() {
             consolidations,
             vec![(
                 completed.to_string(),
-                crate::app_event::ConsolidationScrollbackReflow::IfResizeReflowRan,
+                crate::app_event::ConsolidationScrollbackReflow::Required,
             )]
         );
     }

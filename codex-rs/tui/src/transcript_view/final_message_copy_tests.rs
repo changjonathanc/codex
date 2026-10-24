@@ -107,7 +107,11 @@ fn final_answer_selection_copies_content_across_separator_and_resize() {
                 &text,
                 /*clear_selection*/ false,
                 |text, format| {
-                    assert_eq!((text, format), (expected.0.as_str(), CopyFormat::Markdown));
+                    assert_eq!(text, plain.text());
+                    assert_eq!(
+                        format,
+                        CopyFormat::MarkdownSelection(expected.0.clone().into())
+                    );
                     Ok(CopyStatus::Confirmed)
                 },
             )
@@ -150,12 +154,10 @@ fn final_answer_body_selection_preserves_links() {
             &selected,
             /*clear_selection*/ true,
             |text, format| {
+                assert_eq!(text, "review");
                 assert_eq!(
-                    (text, format),
-                    (
-                        "[review](<https://example.test/review>)",
-                        CopyFormat::Markdown
-                    )
+                    format,
+                    CopyFormat::MarkdownSelection("[review](<https://example.test/review>)".into())
                 );
                 Ok(CopyStatus::Confirmed)
             },

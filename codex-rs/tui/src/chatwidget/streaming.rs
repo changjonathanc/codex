@@ -500,10 +500,7 @@ impl ChatWidget {
             self.handle_stream_finished();
             self.request_redraw();
         } else {
-            self.finalize_completed_assistant_message(
-                Some(&message),
-                item.phase.clone(),
-            );
+            self.finalize_completed_assistant_message(Some(&message), item.phase.clone());
         }
         if !parsed.visible_markdown.is_empty() {
             self.transcript

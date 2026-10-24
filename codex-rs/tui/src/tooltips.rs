@@ -46,10 +46,7 @@ fn experimental_tooltips(
 }
 
 /// Pick a local command or shortcut tip when starting Codex.
-pub(crate) fn get_tooltip(
-    _plan: Option<PlanType>,
-    keymap: &TuiKeymap,
-) -> Option<String> {
+pub(crate) fn get_tooltip(_plan: Option<PlanType>, keymap: &TuiKeymap) -> Option<String> {
     pick_tooltip(&mut rand::rng(), keymap)
 }
 

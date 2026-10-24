@@ -940,6 +940,7 @@ fn find_expands_only_the_match_and_preserves_manual_disclosures() {
                     )),
                     source: codex_app_server_protocol::CommandExecutionSource::Agent,
                     start_time: None,
+                    timeout: None,
                     duration: None,
                     interaction_input: None,
                 },

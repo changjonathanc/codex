@@ -3,6 +3,7 @@
 use chrono::DateTime;
 use chrono::Utc;
 use codex_core::ThreadManager;
+use codex_core::config::Config;
 use codex_core::context::ScheduledNotification;
 use codex_extension_api::ExtensionData;
 use codex_extension_api::ExtensionFuture;
@@ -39,22 +40,24 @@ use schedule::Schedule;
 struct CronExtension(Weak<ThreadManager>);
 
 /// Install session-scoped schedules; no job is restored from disk.
-pub fn install<C: Send + Sync + 'static>(
-    builder: &mut ExtensionRegistryBuilder<C>,
-    manager: Weak<ThreadManager>,
-) {
+pub fn install(builder: &mut ExtensionRegistryBuilder<Config>, manager: Weak<ThreadManager>) {
     let extension = Arc::new(CronExtension(manager));
     builder.thread_lifecycle_contributor(extension.clone());
     builder.tool_contributor(extension);
 }
 
-impl<C: Send + Sync + 'static> ThreadLifecycleContributor<C> for CronExtension {
-    fn on_thread_start<'a>(&'a self, input: ThreadStartInput<'a, C>) -> ExtensionFuture<'a, ()> {
+impl ThreadLifecycleContributor<Config> for CronExtension {
+    fn on_thread_start<'a>(
+        &'a self,
+        input: ThreadStartInput<'a, Config>,
+    ) -> ExtensionFuture<'a, ()> {
         Box::pin(async move {
-            if matches!(
-                input.session_source,
-                SessionSource::SubAgent(SubAgentSource::Review)
-            ) {
+            if input.config.ephemeral
+                || matches!(
+                    input.session_source,
+                    SessionSource::SubAgent(SubAgentSource::Review)
+                )
+            {
                 return;
             }
             let Ok(thread_id) = ThreadId::from_string(input.thread_store.level_id()) else {

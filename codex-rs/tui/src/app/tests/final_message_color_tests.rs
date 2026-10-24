@@ -14,12 +14,14 @@ async fn final_message_color_is_used_for_live_consolidation() -> Result<()> {
     ))];
     let mut tui = crate::tui::test_support::make_test_tui()?;
     let cwd = app.config.cwd.to_path_buf();
+    let cell = history_cell::AgentMarkdownCell::new("Colored result.".into(), &cwd)
+        .with_message_phase(Some(MessagePhase::FinalAnswer))
+        .with_final_message_color(history_cell::final_message_color(
+            app.local_settings.tui.final_message_color,
+        ));
     app.handle_consolidate_agent_message(
         &mut tui,
-        "Colored result.".into(),
-        Some(MessagePhase::FinalAnswer),
-        cwd,
-        /*inline_visualization_context*/ None,
+        cell,
         ConsolidationScrollbackReflow::Required,
         /*deferred_history_cell*/ None,
     )?;

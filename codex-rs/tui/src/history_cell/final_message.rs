@@ -14,7 +14,10 @@ use crate::wrapping::word_wrap_line_with_source;
 pub(crate) fn configured_color(setting: Option<FinalMessageColor>) -> Color {
     setting.map_or(Color::Magenta, |color| {
         let [red, green, blue] = color.rgb();
-        crate::style::readable_color_on(Color::Rgb(red, green, blue), /*background*/ None)
+        // The user configured this exact color, so an ANSI color cannot replace it.
+        #[allow(clippy::disallowed_methods)]
+        let configured = Color::Rgb(red, green, blue);
+        crate::style::readable_color_on(configured, /*background*/ None)
     })
 }
 

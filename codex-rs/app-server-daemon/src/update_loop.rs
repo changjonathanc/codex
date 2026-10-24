@@ -547,6 +547,7 @@ async fn update_external_package(
 ) -> Result<(UpdateLoopControl, Option<RestartIfRunningOutcome>)> {
     let managed_codex_bin =
         resolved_managed_codex_bin(&daemon.current_managed_codex_bin()?).await?;
+    let (package_root, _, _) = selected_release(daemon)?;
     if executable_identity(&managed_codex_bin).await? == *running_updater_identity {
         return Ok((UpdateLoopControl::Continue, None));
     }
@@ -556,7 +557,7 @@ async fn update_external_package(
             return Ok((UpdateLoopControl::Stop, None));
         }
         match daemon
-            .try_restart_if_running(RestartMode::Always, &managed_codex_bin)
+            .try_restart_if_running(RestartMode::Always, &managed_codex_bin, &package_root)
             .await?
         {
             RestartIfRunningOutcome::Busy => {

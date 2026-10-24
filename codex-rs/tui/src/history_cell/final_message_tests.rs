@@ -98,6 +98,7 @@ fn only_explicit_final_answers_get_a_treatment() {
 
 #[test]
 fn final_message_color_changes_only_the_top_separator() {
+    #[allow(clippy::disallowed_methods)]
     let color = Color::Rgb(137, 180, 250);
     let default = AgentMarkdownCell::new(ANSWER.into(), Path::new("/tmp"))
         .with_message_phase(Some(MessagePhase::FinalAnswer));

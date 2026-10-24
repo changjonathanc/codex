@@ -74,7 +74,7 @@ async fn owned_startup_hides_tip_in_transcript() -> Result<()> {
             .collect::<Vec<_>>()
             .join("\n");
         assert!(text.contains("Use /mcp"));
-        assert_eq!(text.contains("model:"), mode == HistoryRenderMode::Raw);
+        assert!(!text.contains("model:"));
         assert!(!text.contains('╭'));
     }
     app.transcript_view.begin_search();

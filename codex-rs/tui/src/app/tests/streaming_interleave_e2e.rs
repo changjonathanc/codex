@@ -213,11 +213,15 @@ async fn command_start_before_message_completion_does_not_duplicate_preamble() -
             .filter(|cell| {
                 !cell.as_any().is::<crate::history_cell::SessionInfoCell>()
                     && !cell.as_any().is::<crate::history_cell::UserHistoryCell>()
+                    // The fork keeps session metadata in a cell that renders no lines.
+                    && !cell.display_lines(/*width*/ 80).is_empty()
             })
             .map(|cell| {
                 let lines = cell.display_lines(/*width*/ 80);
                 if cell.as_any().is::<crate::exec_cell::ExecCell>() {
-                    lines.first().map(ToString::to_string).unwrap_or_default()
+                    normalize_command_duration(
+                        lines.first().map(ToString::to_string).unwrap_or_default(),
+                    )
                 } else {
                     normalize_completion_timestamps(
                         cell.as_ref(),
@@ -234,7 +238,7 @@ async fn command_start_before_message_completion_does_not_duplicate_preamble() -
         insta::allow_duplicates! {
             insta::assert_snapshot!(transcript_snapshot, @r"
             • I’ll inspect the relevant streaming path first.
-            • Ran echo fixture-output
+            • Ran ([duration]) echo fixture-output
             • Finished.
               Worked for [duration] • [completion time]
             ");
@@ -244,4 +248,15 @@ async fn command_start_before_message_completion_does_not_duplicate_preamble() -
     app_server.shutdown().await?;
     model_server.shutdown().await;
     Ok(())
+}
+
+/// The fork renders the measured shell duration, which varies between runs.
+fn normalize_command_duration(line: String) -> String {
+    match line
+        .strip_prefix("• Ran (")
+        .and_then(|rest| rest.split_once(") "))
+    {
+        Some((_, command)) => format!("• Ran ([duration]) {command}"),
+        None => line,
+    }
 }

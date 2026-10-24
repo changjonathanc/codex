@@ -1361,6 +1361,7 @@ pub(crate) enum AppEvent {
     },
 
     /// Apply an advanced reasoning effort to the active conversation without changing defaults.
+    #[allow(dead_code)]
     ApplyAdvancedReasoning {
         model: String,
         effort: ReasoningEffort,

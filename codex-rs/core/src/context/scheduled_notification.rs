@@ -1,6 +1,7 @@
 use super::ContextualUserFragment;
 use super::InternalContextSource;
 use super::InternalModelContextFragment;
+use codex_protocol::models::ContentItem;
 use codex_protocol::models::ContentItemKind;
 use tokio_util::sync::CancellationToken;
 
@@ -37,9 +38,6 @@ impl ScheduledNotification {
 }
 
 impl ContextualUserFragment for ScheduledNotification {
-    fn requires_separate_message(&self) -> bool {
-        true
-    }
     fn content_kind(&self) -> ContentItemKind {
         ContentItemKind("scheduled_notification.internal_context".into())
     }
@@ -56,7 +54,7 @@ impl ContextualUserFragment for ScheduledNotification {
         InternalModelContextFragment::type_markers()
     }
 
-    fn body(&self) -> String {
+    fn body(&self) -> ContentItem {
         InternalModelContextFragment::new(
             InternalContextSource::from_static("scheduled_notification"),
             format!(

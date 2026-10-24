@@ -47,6 +47,7 @@ async fn user_message_timestamps_replay_saved_item_times_and_skip_unknown_steers
         chat.replay_thread_turns(
             vec![Turn {
                 id: "timestamp-turn".into(),
+                root_turn_id: None,
                 items: vec![user("first"), user("saved-steer"), user("unknown-steer")],
                 items_view: codex_app_server_protocol::TurnItemsView::Full,
                 status: TurnStatus::Completed,
